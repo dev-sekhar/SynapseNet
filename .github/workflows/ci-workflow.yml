@@ -1,0 +1,57 @@
+# ci-workflow.yml
+name: SynapseNet CI Workflow
+
+# Controls when the workflow will run
+on:
+    # Trigger the workflow on push or pull request events for the main branch
+    push:
+        branches: [dev] # or 'master' if your default branch is master
+    pull_request:
+        branches: [dev] # or 'master'
+
+    # Allows you to run this workflow manually from the Actions tab
+    workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+    # This workflow contains a single job called "build-and-test"
+    build-and-test:
+        # The type of runner that the job will run on
+        runs-on: ubuntu-latest # You can also use windows-latest or macos-latest
+
+        # Steps represent a sequence of tasks that will be executed as part of the job
+        steps:
+            # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+            - name: Checkout Repository
+              uses: actions/checkout@v4 # Using version 4 of the checkout action
+
+            # Step to set up a Node.js environment (for future frontend/backend)
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20" # Specify your preferred Node.js version
+
+            # Step to set up a Go environment (for future chaincode)
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.22" # Specify your preferred Go version
+
+            # --- Future steps will go here as we introduce code ---
+            # Example Placeholder for Linting (will be implemented in later tasks)
+            - name: Run Linting Checks (Placeholder)
+              run: echo "Linting checks will be configured here for Go and Node.js code."
+
+            # Example Placeholder for Unit Tests (will be implemented in later tasks)
+            - name: Run Unit Tests (Placeholder)
+              run: echo "Unit tests will be configured here for Go and Node.js code."
+
+            # Example Placeholder for Docker Build/Push (for CD, later)
+            - name: Build Docker Images (Placeholder for CD)
+              run: echo "Docker images for chaincode, backend, frontend will be built here."
+              # if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Only on main branch push
+
+            # Example Placeholder for Deployment (for CD, later)
+            - name: Deploy to Staging (Placeholder for CD)
+              run: echo "Deployment to staging environment will be triggered here."
+              # if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Only on main branch push

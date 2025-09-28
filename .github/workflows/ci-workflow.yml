@@ -5,9 +5,9 @@ name: SynapseNet CI Workflow
 on:
     # Trigger the workflow on push or pull request events for the dev branch
     push:
-        branches: [dev] # Changed to 'dev' branch
+        branches: [dev]
     pull_request:
-        branches: [dev] # Changed to 'dev' branch
+        branches: [dev]
 
     # Allows you to run this workflow manually from the Actions tab
     workflow_dispatch:
@@ -25,91 +25,55 @@ jobs:
             - name: Checkout Repository
               uses: actions/checkout@v4
 
+            # --- Debug Step: Show Workflow File Content (Strategy 3) ---
+            - name: Debug - Show Workflow File Content
+              run: cat .github/workflows/ci-workflow.yml
+            # --- End Debug Step ---
+
             # --- Node.js Setup (for JS/TS Chaincode, Backend, React Native Frontend) ---
             - name: Set up Node.js
               uses: actions/setup-node@v4
               with:
                   node-version: "20" # Consistent Node.js version
-                  cache: "yarn" # Changed to 'yarn'
-                  #cache-dependency-path: "yarn.lock" # <-- ADD THIS LINE
+                  cache: "yarn"
+                  cache-dependency-path: "yarn.lock"
 
             # --- Python Setup (for AI Services, Utilities) ---
             - name: Set up Python
               uses: actions/setup-python@v5
               with:
-                  python-version: "3.10" # Consistent Python version (e.g., 3.10 or 3.11)
-                  cache: "pip" # Cache pip dependencies
-                  cache-dependency-path: "**/ai-services/*/requirements.txt"
+                  python-version: "3.10" # Consistent Python version
+                  # Ensure 'cache' and 'cache-dependency-path' are NOT present here anymore.
+                  # We have removed these in previous steps to resolve the cache error.
 
             # --- Docker Setup (for building container images) ---
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
-              # The buildx action allows for building multi-platform Docker images and other advanced features.
 
             # --- Placeholder for Linting & Formatting Steps ---
-            # These steps will be more specific once we create actual JS/TS and Python projects
-            # within our repository (e.g., in 'chaincode/', 'backend/', 'frontend-mobile/', 'ai-service/').
-            # For now, they just echo messages.
             - name: Run JS/TS (Chaincode, Backend, Mobile Frontend) Linting & Formatting Check (Placeholder)
-              # This step will run ESLint and Prettier checks across all JS/TS projects.
-              # You'll likely define a root 'package.json' with a 'lint' and 'format-check' script
-              # that recursively runs these in sub-directories like 'chaincode', 'backend', 'frontend-mobile'.
               run: echo "JS/TS linting & formatting checks will be configured here for chaincode, backend, and mobile frontend."
-              # Example (to be adapted later, assuming a monorepo setup):
-              # - name: Install Root JS/TS Dependencies (if monorepo)
-              #   run: npm install # or yarn install
-              # - name: Run JS/TS Linting & Formatting
-              #   run: npm run lint:all && npm run format:check:all # Custom scripts
 
             - name: Run Python Linting & Formatting Check (Placeholder)
-              # This step will run Black, Flake8/Pylint.
-              # You'll need to define a poetry/pip install and then run the linters within the ai-service context.
               run: echo "Python linting & formatting checks will be configured here for AI services."
-              # Example (to be adapted later):
-              # - name: Install AI Service Python Dependencies
-              #   run: |
-              #     cd ai-services/skill-matcher
-              #     python -m venv venv
-              #     source venv/bin/activate
-              #     pip install black flake8 # Or poetry install, then poetry run install
-              # - name: Run Python Linting & Formatting
-              #   run: |
-              #     cd ai-services/skill-matcher
-              #     source venv/bin/activate
-              #     black --check .
-              #     flake8 .
 
             # --- Placeholder for Unit Tests ---
             - name: Run Unit Tests (Placeholder)
               run: echo "Unit tests will be configured here for JS/TS and Python code."
 
             # --- Docker Build Steps (Plugs for Cloud Agnosticism) ---
-            # These steps build Docker images for each service, producing platform-agnostic deployable artifacts.
-            # For now, they just echo messages. Actual build commands will be added when Dockerfiles are complete.
             - name: Build Chaincode Docker Image (Placeholder)
               run: echo "Building chaincode image..."
-              # Example (to be uncommented and adapted later):
-              # run: docker build -t synapsenet-chaincode:latest ./chaincode/my-contract
 
             - name: Build Backend API Gateway Docker Image (Placeholder)
               run: echo "Building backend API gateway image..."
-              # Example (to be uncommented and adapted later):
-              # run: docker build -t synapsenet-backend:latest ./backend-api-gateway
 
             - name: Build AI Service Docker Image (Placeholder)
               run: echo "Building AI service image..."
-              # Example (to be uncommented and adapted later):
-              # run: docker build -t synapsenet-ai-skill-matcher:latest ./ai-services/skill-matcher
 
-            # For the mobile frontend, a Docker image might not be built for the *final app bundle* (which is for app stores),
-            # but for development/testing environments or a web PWA companion.
             - name: Build Mobile Frontend Docker Image (Placeholder, if applicable)
               run: echo "Building mobile frontend image (for dev/PWA if applicable)..."
-              # Example (to be uncommented and adapted later):
-              # run: docker build -t synapsenet-frontend-mobile:latest ./frontend-mobile
 
             # --- Example Placeholder for Deployment (for CD, later - now purely conceptual for agnosticism) ---
             - name: Deploy to Staging (Placeholder for CD)
               run: echo "Deployment will be orchestrated using container-native tools (e.g., Kubernetes manifests, Docker Compose)."
-              # This step will involve generating or applying Kubernetes manifests or Docker Compose files
-              # which are inherently more cloud-agnostic than vendor-specific deployment scripts.

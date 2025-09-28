@@ -39,6 +39,7 @@ jobs:
               with:
                   python-version: "3.10" # Consistent Python version (e.g., 3.10 or 3.11)
                   cache: "pip" # Cache pip dependencies
+                  cache-dependency-path: "**/ai-services/*/requirements.txt"
 
             # --- Docker Setup (for building container images) ---
             - name: Set up Docker Buildx

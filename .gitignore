@@ -65,7 +65,7 @@ vendor/
 # Node.js / JavaScript / TypeScript (for Frontend, Backend API Gateway)
 # -----------------------------------------------------------------------------
 node_modules/
-yarn.lock
+#yarn.lock
 package-lock.json
 
 # Production deployments often bundle client-side code into "build" or "dist"
@@ -76,7 +76,7 @@ package-lock.json
 
 # Node.js / JavaScript / TypeScript
 node_modules/
-yarn.lock
+#yarn.lock
 package-lock.json
 
 /build

@@ -7,6 +7,17 @@ We welcome contributions to SynapseNet! To ensure a smooth and collaborative dev
 - Clone the repository: `git clone https://github.com/your-org/SynapseNet.git`
 - Set up your local development environment (see local setup instructions in README).
 
+## Deployment Strategy: Cloud Agnosticism
+
+SynapseNet is designed to be cloud-agnostic, allowing deployment to various cloud providers (AWS, Azure, GCP, etc.) or on-premise infrastructure. This is achieved through the following principles:
+
+1.  **Containerization (Docker):** All core components (Hyperledger Fabric nodes, Backend API, AI services, IPFS, etc.) will be containerized using Docker. This ensures consistent runtime environments regardless of the underlying host.
+2.  **Container Orchestration (Kubernetes-Native):** While Kubernetes isn't strictly part of the MVP *deployment* in all cases, our services will be designed with Kubernetes best practices in mind (e.g., health checks, readiness probes, configuration via environment variables/secrets). This makes migration to managed Kubernetes services (EKS, AKS, GKE) straightforward.
+3.  **Standard Networking:** Services will communicate via standard HTTP/HTTPS/gRPC protocols, exposed via well-defined ports.
+4.  **Externalized Configuration:** All environment-specific configurations (API keys, database connection strings, Fabric network credentials, IPFS gateway endpoints) will be managed via environment variables or external secret management systems, not hardcoded.
+5.  **Managed Services Abstraction:** Where a cloud provider's managed service might eventually be used (e.g., a managed database, or a managed IPFS service), we will initially use self-hosted, open-source alternatives (e.g., PostgreSQL for a database, local IPFS nodes) or abstract interfaces to enable easy swapping.
+6.  **Infrastructure as Code (IaC) Plugs:** We will prepare for Infrastructure as Code (e.g., Terraform or Pulumi) for provisioning resources. This will involve defining resource requirements in a platform-neutral way, even if specific cloud provider `main.tf` files are written later.
+
 ## 2. Version Control (Git) Guidelines
 
 - ... (Keep this section as is) ...

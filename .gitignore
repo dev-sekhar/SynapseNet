@@ -74,6 +74,21 @@ package-lock.json
 /public/build
 /public/dist
 
+# Node.js / JavaScript / TypeScript
+node_modules/
+yarn.lock
+package-lock.json
+
+/build
+/dist
+/public/build
+/public/dist
+
+# TypeScript build output
+*.js.map
+*.d.ts
+*.tsbuildinfo
+
 # dotenv files
 .env
 .env.local

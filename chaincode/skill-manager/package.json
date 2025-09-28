@@ -1,0 +1,25 @@
+{
+  "name": "skill-manager",
+  "version": "1.0.0",
+  "description": "SynapseNet Skill Management Chaincode",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "fabric-chaincode-node start",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "SynapseNet Team",
+  "license": "ISC",
+  "dependencies": {
+    "fabric-contract-api": "^2.5.6",
+    "fabric-shim": "^2.5.6",
+    "json-stringify-deterministic": "^1.0.12",
+    "sort-keys-recursive": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

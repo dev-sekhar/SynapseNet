@@ -1,0 +1,24 @@
+
+{
+  "name": "synapsenet-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "chaincode/*",       
+    "backend-api-gateway",
+    "frontend-mobile",
+    "ai-services/*"      
+  ],
+  "scripts": {
+    "lint:js": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "format:js": "prettier --check .",
+    "format:js:fix": "prettier --write ."
+
+  },
+  "devDependencies": {
+    "eslint": "^8.x.x",        
+    "prettier": "^3.x.x",
+    "@typescript-eslint/eslint-plugin": "^7.x.x",
+    "@typescript-eslint/parser": "^7.x.x"
+  }
+}

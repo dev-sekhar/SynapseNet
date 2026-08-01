@@ -29,6 +29,86 @@ The chaincodes are packaged, installed, approved, and committed separately. Peer
 
 This is intentionally two chaincodes—not one per contract. Credential identity, issuance, wallets, and sharing change together and share governance. Trust policy, participants, incidents, and reputation form a second cohesive domain with a distinct governance and upgrade boundary.
 
+## How the Smart Contracts Interact
+
+Smart contracts within a chaincode share its deployment lifecycle, endorsement policy, channel, and world-state namespace. They are separated at the Fabric API boundary, while common validation and persistence remain in one internal domain implementation. This avoids duplicating tightly coupled rules or making cross-chaincode calls for ordinary domain workflows.
+
+```mermaid
+flowchart LR
+    subgraph CredentialChaincode[skill-manager chaincode]
+        Identity[IdentityContract]
+        Credential[CredentialContract]
+        Wallet[WalletContract]
+        Sharing[SharingContract]
+        CredentialDomain[(shared credential-domain implementation)]
+        Identity --> CredentialDomain
+        Credential --> CredentialDomain
+        Wallet --> CredentialDomain
+        Sharing --> CredentialDomain
+    end
+
+    subgraph TrustChaincode[trust-manager chaincode]
+        Policy[TrustPolicyContract]
+        Participant[ParticipantTrustContract]
+        Incident[IncidentContract]
+        Reputation[ReputationContract]
+        TrustDomain[(shared trust-domain implementation)]
+        Policy --> TrustDomain
+        Participant --> TrustDomain
+        Incident --> TrustDomain
+        Reputation --> TrustDomain
+    end
+```
+
+Typical credential-domain interactions are:
+
+1. `IdentityContract` registers a user or enterprise and creates the identity records required by later transactions.
+2. `CredentialContract` validates those records when a holder submits a request and when an authorized enterprise reviewer approves it.
+3. Approval writes the credential and wallet projection atomically within the `skill-manager` transaction.
+4. `WalletContract` reads and refreshes wallet and SNT projections derived from credential-domain records.
+5. `SharingContract` verifies credential ownership before creating a recipient-, purpose-, and time-bound disclosure grant.
+
+Typical trust-domain interactions are:
+
+1. `TrustPolicyContract` establishes the governance rules used throughout the domain.
+2. `ParticipantTrustContract` binds an actor and MSP identity to a wallet-signed address.
+3. `IncidentContract` reads participant and policy state while managing report, response, decision, appeal, and finalization stages.
+4. `ReputationContract` applies policy-defined awards to participant reputation.
+5. Final incident decisions update trust projections and create penalty directives inside the same `trust-manager` transaction.
+
+These are logical contract interactions, not nested Fabric invocations. Each public contract delegates to the shared domain implementation and operates on the same chaincode state namespace.
+
+## How the Chaincodes Interact
+
+The two chaincodes do not directly invoke one another. The API gateway and Fabric adapter explicitly select the channel, chaincode, smart-contract namespace, and transaction. Application-level orchestration connects records using stable `actorId` and `credentialId` values.
+
+```mermaid
+sequenceDiagram
+    participant App as Application service
+    participant Credentials as skill-manager
+    participant Trust as trust-manager
+
+    App->>Credentials: Read credential/issuer state
+    Credentials-->>App: Credential result
+    App->>Trust: Read credential trust projection
+    Trust-->>App: trusted/challenged/invalidated
+    App-->>App: Combine results for the caller
+
+    App->>Trust: Finalize confirmed incident
+    Trust-->>App: Penalty directive + trust event
+    App->>Credentials: Execute/reconcile authorized SNT action
+    Credentials-->>App: Token transaction result
+```
+
+This design has the following operational rules:
+
+- Both chaincodes default to `synapsenet`, but each can be configured on a different channel.
+- Each chaincode is packaged, installed, approved, committed, upgraded, and monitored independently.
+- Each chaincode has its own endorsement policy and peer world-state namespace.
+- Application orchestration is not an atomic transaction across chaincodes. Services must use idempotency, retry, reconciliation, and explicit partial-failure handling for multi-chaincode writes.
+- Cross-channel workflows must be treated as application-level coordination; no assumption is made that one channel can atomically update another.
+- A direct `invokeChaincode` dependency should be introduced only when its governance, performance, channel, and failure semantics have been reviewed. It is not part of the current design.
+
 ## Shared Technical Dependencies
 
 | Dependency | Purpose |

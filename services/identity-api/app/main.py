@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
@@ -35,8 +36,8 @@ app = FastAPI(
     title="SynapseNet Application API",
     version="2.0.0",
     description="Privacy-first MetaMask authorization and Fabric orchestration boundary.",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    docs_url=None,
+    redoc_url=None,
     openapi_url="/api/openapi.json",
 )
 app.add_middleware(
@@ -72,6 +73,46 @@ def documentation_root() -> Path:
     return Path(configured).resolve() if configured else Path(__file__).resolve().parents[3] / "docs"
 
 
+DOCUMENTATION_TOP_BAR = """<header class="synapsenet-docs-bar">
+<a class="synapsenet-docs-brand" href="/docs">SynapseNet Documentation</a>
+<nav aria-label="Documentation navigation">
+<a href="http://localhost:3001/">Home</a><a href="/docs">Project Docs</a>
+<a href="/api/docs">Swagger API</a><a href="/api/redoc">ReDoc</a>
+</nav></header>"""
+DOCUMENTATION_TOP_BAR_CSS = """
+.synapsenet-docs-bar{box-sizing:border-box;position:sticky;top:0;z-index:10000;height:68px;
+display:flex;align-items:center;justify-content:space-between;padding:0 28px;color:#fff;background:#172033;
+font-family:Roboto,Arial,sans-serif}.synapsenet-docs-bar *{box-sizing:border-box}
+.synapsenet-docs-brand{color:#fff!important;text-decoration:none;font-size:20px;font-weight:700}
+.synapsenet-docs-bar nav{display:flex;align-items:center;gap:18px}.synapsenet-docs-bar nav a{color:#9ee5d3!important;
+text-decoration:none;font-size:14px;font-weight:700}@media(max-width:700px){.synapsenet-docs-bar{height:auto;
+min-height:68px;align-items:flex-start;gap:10px;padding:16px;flex-direction:column}.synapsenet-docs-bar nav{gap:12px;flex-wrap:wrap}}
+"""
+
+
+def with_documentation_top_bar(page: HTMLResponse) -> HTMLResponse:
+    markup = page.body.decode("utf-8")
+    markup = markup.replace("</head>", f"<style>{DOCUMENTATION_TOP_BAR_CSS}</style></head>")
+    markup = markup.replace("<body>", f"<body>{DOCUMENTATION_TOP_BAR}", 1)
+    return HTMLResponse(markup)
+
+
+@app.get("/api/docs", response_class=HTMLResponse, include_in_schema=False)
+async def swagger_documentation():
+    return with_documentation_top_bar(get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} - Swagger API",
+    ))
+
+
+@app.get("/api/redoc", response_class=HTMLResponse, include_in_schema=False)
+async def redoc_documentation():
+    return with_documentation_top_bar(get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} - ReDoc",
+    ))
+
+
 @app.get("/docs", response_class=HTMLResponse, include_in_schema=False)
 async def project_documentation(document: str | None = Query(default=None)):
     root = documentation_root().resolve()
@@ -93,14 +134,12 @@ async def project_documentation(document: str | None = Query(default=None)):
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SynapseNet Documentation</title><style>
 *{{box-sizing:border-box}}body{{margin:0;color:#172033;background:#f6f7fb;font-family:"Roboto","Arial",sans-serif}}
-header{{height:68px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;color:white;background:#172033}}
-header strong{{font-size:20px}}header nav{{display:flex;gap:18px}}header a{{color:#9ee5d3;text-decoration:none;font-weight:700}}
 main{{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:calc(100vh - 68px)}}
 aside{{padding:24px 16px;border-right:1px solid #dfe3ec;background:white}}aside h2{{margin:0 12px 16px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#687386}}
 aside a{{display:block;padding:10px 12px;border-radius:7px;color:#394357;text-decoration:none;font-size:14px}}aside a:hover,aside a.active{{color:#4d3ec5;background:#efedff}}
 article{{min-width:0;padding:32px clamp(24px,5vw,76px)}}article h1{{margin-top:0;font-size:32px}}pre{{margin:0;padding:30px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #dfe3ec;border-radius:12px;background:white;font:14px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace}}
 @media(max-width:760px){{main{{grid-template-columns:1fr}}aside{{border-right:0;border-bottom:1px solid #dfe3ec}}}}
-</style></head><body><header><strong>SynapseNet Documentation</strong><nav><a href="http://localhost:3001/">Home</a><a href="/api/docs">Swagger API</a><a href="/api/redoc">ReDoc</a></nav></header>
+</style><style>{DOCUMENTATION_TOP_BAR_CSS}</style></head><body>{DOCUMENTATION_TOP_BAR}
 <main><aside><h2>Project documents</h2>{navigation}</aside><article><h1>{html.escape(selected or "Documentation")}</h1><pre>{html.escape(content)}</pre></article></main>
 </body></html>""")
 

@@ -1,0 +1,20 @@
+logging:
+  level: info
+
+peer:
+  id: cli
+  networkId: synapsenet
+  address: peer0.org1.synapsenet.com:7051
+  localMspId: Org1MSP
+  mspConfigPath: /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.synapsenet.com/users/Admin@org1.synapsenet.com/msp
+  tls:
+    enabled: true
+    rootcert:
+      file: /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.synapsenet.com/peers/peer0.org1.synapsenet.com/tls/ca.crt
+
+client:
+  tls:
+    cert:
+      file: /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.synapsenet.com/users/Admin@org1.synapsenet.com/tls/client.crt
+    key:
+      file: /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org1.synapsenet.com/users/Admin@org1.synapsenet.com/tls/client.key

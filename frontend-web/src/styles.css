@@ -1,0 +1,51 @@
+html { color-scheme: light; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, #fafbff 0, #f5f7fb 420px);
+  z-index: -1;
+}
+.app-shell { min-height: 100vh; position: relative; }
+.topbar { backdrop-filter: blur(18px); border-bottom: 1px solid #e6eaf0; background: rgba(255,255,255,.9) !important; color: #172033 !important; }
+.brand-mark { background: linear-gradient(135deg,#5b4bdb,#087f68) !important; color: #fff !important; }
+.hero { padding: 32px; border: 1px solid #e4e8f1; border-radius: 22px; background: linear-gradient(120deg,#fff 58%,#f0edff); }
+.hero span { color: #5b4bdb; }
+.protocol-chip { color: #087f68 !important; border: 1px solid #bfe8dd !important; background: #edfaf6 !important; }
+.identity-card { border-color: #d9d3ff !important; box-shadow: 0 18px 50px rgba(72,57,165,.10) !important; }
+.wallet-card { min-height: 260px; overflow: hidden; }
+.wallet-card .MuiCardActionArea-root { height: 100%; }
+.wallet-card .MuiCardContent-root { padding: 30px; }
+.credential-card { border-top: 4px solid #5b4bdb !important; background: linear-gradient(145deg,#fff,#f7f5ff) !important; }
+.token-card { border-top: 4px solid #087f68 !important; background: linear-gradient(145deg,#fff,#f0fbf8) !important; }
+.credential-card .MuiAvatar-root { background: #ebe8ff; color: #5b4bdb; }
+.token-card .MuiAvatar-root { background: #dff8f1; color: #087f68; }
+.scan-stat { border: 0; padding: 4px; margin: -4px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 8px; }
+.scan-stat:hover { background: rgba(91,75,219,.07); }
+.scan-stat:focus-visible { outline: 3px solid rgba(91,75,219,.25); outline-offset: 2px; }
+.scan-stat-primary { display: block; width: calc(100% + 8px); }
+.transaction-scan .MuiTableCell-head { font-weight: 800; white-space: nowrap; background: #f7f8fc; }
+.transaction-scan .MuiTableCell-root { border-color: #e8eaf0; }
+.qr-icon { width: 58px !important; height: 58px !important; background: #ebe8ff !important; color: #5b4bdb !important; }
+.flow-card { background: #fff; }
+.flow-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-top: 18px; }
+.flow-step { position: relative; padding: 18px; border-radius: 12px; background: #f7f8fc; border: 1px solid #e4e8f1; }
+.flow-step[role="button"], button.flow-step {
+  width: 100%; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.flow-step[role="button"]:hover, button.flow-step:hover {
+  transform: translateY(-2px); border-color: #8678df; box-shadow: 0 8px 22px rgba(72,57,165,.10);
+}
+.flow-step[role="button"]:focus-visible, button.flow-step:focus-visible {
+  outline: 3px solid rgba(91,75,219,.25); outline-offset: 2px;
+}
+.flow-step:not(:last-child)::after { content: "→"; position: absolute; right: -11px; top: 50%; z-index: 1; color: #8678df; font-weight: 800; }
+.flow-number { color: #5b4bdb; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+@media (max-width: 600px) {
+  .topbar .MuiChip-root { display: none; }
+  .topbar .MuiButton-root { min-width: 46px; font-size: 0; }
+  .wallet-card { min-height: 290px; }
+  .hero { padding: 22px; }
+  .flow-row { grid-template-columns: 1fr; }
+  .flow-step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -15px; }
+}

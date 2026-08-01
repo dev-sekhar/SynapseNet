@@ -1,12 +1,13 @@
 {
   "name": "skill-manager",
-  "version": "1.0.0",
+  "version": "1.7.0",
   "description": "SynapseNet Skill Management Chaincode",
   "main": "dist/index.js",
   "scripts": {
     "start": "fabric-chaincode-node start",
+    "start:server": "fabric-chaincode-node server --chaincode-address=${CHAINCODE_ADDRESS:-0.0.0.0:9999} --chaincode-id=${CHAINCODE_ID}",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run build && node --test test/*.test.js"
   },
   "keywords": [],
   "author": "SynapseNet Team",

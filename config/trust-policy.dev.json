@@ -1,0 +1,17 @@
+{
+  "version": "trust-policy-dev-2",
+  "governanceMspIds": ["Org1MSP"],
+  "penaltyBurnBasisPoints": [1000, 2500, 10000],
+  "incidentResponseSeconds": 1209600,
+  "appealSeconds": 1209600,
+  "reputationRewards": {
+    "verified_performance": 5,
+    "timely_issuer_response": 3,
+    "upheld_challenge": 8
+  },
+  "reputationPenalties": {
+    "confirmed_misconduct": 20,
+    "issuer_unresponsive": 5,
+    "unsupported_challenge": 3
+  }
+}

@@ -1,0 +1,228 @@
+version: "3.8"
+
+networks:
+  synapsenet_test:
+    name: synapsenet_test
+
+volumes:
+  orderer_data:
+  peer0_data:
+  couchdb_data:
+  application_data:
+
+services:
+  orderer.synapsenet.com:
+    container_name: orderer.synapsenet.com
+    image: hyperledger/fabric-orderer:${FABRIC_VERSION:-2.5.15}
+    command: orderer
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/fabric
+      FABRIC_LOGGING_SPEC: INFO
+      ORDERER_GENERAL_LISTENADDRESS: 0.0.0.0
+      ORDERER_GENERAL_LISTENPORT: 7050
+      ORDERER_GENERAL_LOCALMSPID: OrdererMSP
+      ORDERER_GENERAL_LOCALMSPDIR: /etc/hyperledger/fabric/msp
+      ORDERER_GENERAL_BOOTSTRAPMETHOD: file
+      ORDERER_GENERAL_BOOTSTRAPFILE: /etc/hyperledger/fabric/genesis.block
+      ORDERER_GENERAL_TLS_ENABLED: "true"
+      ORDERER_GENERAL_TLS_PRIVATEKEY: /etc/hyperledger/fabric/tls/server.key
+      ORDERER_GENERAL_TLS_CERTIFICATE: /etc/hyperledger/fabric/tls/server.crt
+      ORDERER_GENERAL_TLS_ROOTCAS: '[/etc/hyperledger/fabric/tls/ca.crt]'
+      ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE: /etc/hyperledger/fabric/tls/server.crt
+      ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY: /etc/hyperledger/fabric/tls/server.key
+      ORDERER_GENERAL_CLUSTER_ROOTCAS: '[/etc/hyperledger/fabric/tls/ca.crt]'
+      ORDERER_OPERATIONS_LISTENADDRESS: 0.0.0.0:9443
+      # Keep the local admin listener separate from the operations endpoint.
+      ORDERER_ADMIN_LISTENADDRESS: 127.0.0.1:9444
+      ORDERER_METRICS_PROVIDER: prometheus
+    ports:
+      - "7050:7050"
+      - "9443:9443"
+    volumes:
+      - ./fabric-network-config/channel-artifacts/genesis.block:/etc/hyperledger/fabric/genesis.block:ro
+      - ./fabric-network-config/crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/msp:/etc/hyperledger/fabric/msp:ro
+      - ./fabric-network-config/crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/tls:/etc/hyperledger/fabric/tls:ro
+      - orderer_data:/var/hyperledger/production/orderer
+    networks:
+      - synapsenet_test
+    healthcheck:
+      test: ["CMD", "orderer", "version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  couchdb0.org1.synapsenet.com:
+    container_name: couchdb0.org1.synapsenet.com
+    image: couchdb:${COUCHDB_VERSION:-3.4.2}
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER:-admin}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:-adminpw}
+    ports:
+      - "5984:5984"
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+    networks:
+      - synapsenet_test
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5984/_up"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  peer0.org1.synapsenet.com:
+    container_name: peer0.org1.synapsenet.com
+    image: hyperledger/fabric-peer:${FABRIC_VERSION:-2.5.15}
+    command: peer node start
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/fabric
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_VM_ENDPOINT: unix:///host/var/run/docker.sock
+      CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE: synapsenet_test
+      CORE_PEER_ID: peer0.org1.synapsenet.com
+      CORE_PEER_ADDRESS: peer0.org1.synapsenet.com:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_CHAINCODEADDRESS: peer0.org1.synapsenet.com:7052
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.org1.synapsenet.com:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.org1.synapsenet.com:7051
+      CORE_PEER_LOCALMSPID: Org1MSP
+      CORE_PEER_MSPCONFIGPATH: /etc/hyperledger/fabric/msp
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_LEDGER_STATE_STATEDATABASE: CouchDB
+      CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS: couchdb0.org1.synapsenet.com:5984
+      CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME: ${COUCHDB_USER:-admin}
+      CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD: ${COUCHDB_PASSWORD:-adminpw}
+      CORE_OPERATIONS_LISTENADDRESS: 0.0.0.0:9444
+      CORE_METRICS_PROVIDER: prometheus
+    ports:
+      - "7051:7051"
+      - "9444:9444"
+    volumes:
+      - /var/run/docker.sock:/host/var/run/docker.sock
+      - ./fabric-network-config/crypto-config/peerOrganizations/org1.synapsenet.com/peers/peer0.org1.synapsenet.com/msp:/etc/hyperledger/fabric/msp:ro
+      - ./fabric-network-config/crypto-config/peerOrganizations/org1.synapsenet.com/peers/peer0.org1.synapsenet.com/tls:/etc/hyperledger/fabric/tls:ro
+      - peer0_data:/var/hyperledger/production
+    depends_on:
+      couchdb0.org1.synapsenet.com:
+        condition: service_healthy
+      orderer.synapsenet.com:
+        condition: service_started
+    networks:
+      - synapsenet_test
+    healthcheck:
+      test: ["CMD", "peer", "node", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  cli:
+    container_name: synapsenet-cli
+    image: hyperledger/fabric-tools:${FABRIC_VERSION:-2.5.15}
+    command: /bin/bash
+    tty: true
+    stdin_open: true
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/fabric
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_LOCALMSPID: Org1MSP
+      CORE_PEER_ADDRESS: peer0.org1.synapsenet.com:7051
+      CORE_PEER_MSPCONFIGPATH: /organizations/peerOrganizations/org1.synapsenet.com/users/Admin@org1.synapsenet.com/msp
+      CORE_PEER_TLS_ROOTCERT_FILE: /organizations/peerOrganizations/org1.synapsenet.com/peers/peer0.org1.synapsenet.com/tls/ca.crt
+      ORDERER_CA: /organizations/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/tls/ca.crt
+    volumes:
+      - ./fabric-network-config/crypto-config:/organizations:ro
+      - ./fabric-network-config/channel-artifacts:/channel-artifacts
+      - ./chaincode:/chaincode:ro
+    depends_on:
+      peer0.org1.synapsenet.com:
+        condition: service_healthy
+    networks:
+      - synapsenet_test
+
+  skill-manager:
+    container_name: synapsenet-skill-manager
+    image: synapsenet/skill-manager:${CHAINCODE_VERSION:-1.0}
+    build:
+      context: ./chaincode/skill-manager
+    environment:
+      CHAINCODE_ID: ${CHAINCODE_ID:-not-deployed}
+      CHAINCODE_ADDRESS: 0.0.0.0:9999
+    depends_on:
+      peer0.org1.synapsenet.com:
+        condition: service_healthy
+    networks:
+      - synapsenet_test
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(9999,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  trust-manager:
+    container_name: synapsenet-trust-manager
+    image: synapsenet/trust-manager:${TRUST_CHAINCODE_VERSION:-1.0}
+    build:
+      context: ./chaincode/trust-manager
+    environment:
+      CHAINCODE_ID: ${TRUST_CHAINCODE_ID:-not-deployed}
+    depends_on:
+      peer0.org1.synapsenet.com:
+        condition: service_healthy
+    networks:
+      - synapsenet_test
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(9998,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  application-api:
+    profiles: ["web3"]
+    container_name: synapsenet-application-api
+    build:
+      context: ./backend-fastapi
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    environment:
+      SYNAPSENET_SESSION_SECRET: ${SYNAPSENET_SESSION_SECRET:-local-development-change-me-32}
+      SYNAPSENET_ENCRYPTION_KEY: ${SYNAPSENET_ENCRYPTION_KEY:-bG9jYWwtZGV2ZWxvcG1lbnQta2V5LTMyLWJ5dGVzISE=}
+      SYNAPSENET_DATABASE_URL: sqlite+aiosqlite:///./data/synapsenet.db
+      SYNAPSENET_LEDGER_GATEWAY_URL: http://host.docker.internal:3001
+      SYNAPSENET_FABRIC_ADAPTER_URL: http://fabric-adapter:3010
+      SYNAPSENET_FABRIC_ADAPTER_TOKEN: ${FABRIC_ADAPTER_TOKEN:-local-fabric-adapter-token-change-me}
+      SYNAPSENET_COOKIE_SECURE: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    volumes:
+      - application_data:/app/data
+    networks:
+      - synapsenet_test
+    depends_on:
+      - fabric-adapter
+
+  fabric-adapter:
+    profiles: ["web3"]
+    container_name: synapsenet-fabric-adapter
+    build:
+      context: ./fabric-adapter
+    environment:
+      FABRIC_ADAPTER_TOKEN: ${FABRIC_ADAPTER_TOKEN:-local-fabric-adapter-token-change-me}
+      FABRIC_CRYPTO_ROOT: /crypto
+      PEER_ENDPOINT: peer0.org1.synapsenet.com:7051
+      CHANNEL_NAME: synapsenet
+      SKILL_CHANNEL_NAME: ${SKILL_CHANNEL_NAME:-synapsenet}
+      TRUST_CHANNEL_NAME: ${TRUST_CHANNEL_NAME:-synapsenet}
+      FABRIC_MSP_ID: Org1MSP
+    volumes:
+      - ./fabric-network-config/crypto-config:/crypto:ro
+    networks:
+      - synapsenet_test
+    depends_on:
+      peer0.org1.synapsenet.com:
+        condition: service_healthy

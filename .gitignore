@@ -5,6 +5,11 @@
 # -----------------------------------------------------------------------------
 .DS_Store
 .env
+backend-api-gateway/data/auth.json
+backend-fastapi/data/
+backend-fastapi/.venv/
+__pycache__/
+*.pyc
 .env.*
 .editorconfig
 .idea/
@@ -95,6 +100,15 @@ package-lock.json
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Generated Hyperledger Fabric material (contains private keys)
+fabric-network-config/crypto-config/
+fabric-network-config/channel-artifacts/
+crypto-config/
+channel-artifacts/
+config_update.json
+decoded_channel.json
+envelope.json
 
 # npm package manager cache
 .npm

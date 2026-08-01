@@ -1,79 +1,53 @@
-# ci-workflow.yml
-name: SynapseNet CI Workflow
+name: SynapseNet CI
 
-# Controls when the workflow will run
 on:
-    # Trigger the workflow on push or pull request events for the dev branch
-    push:
-        branches: [dev]
-    pull_request:
-        branches: [dev]
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
 
-    # Allows you to run this workflow manually from the Actions tab
-    workflow_dispatch:
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-    # This workflow contains a single job called "build-and-test"
-    build-and-test:
-        # The type of runner that the job will run on
-        runs-on: ubuntu-latest
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-        # Steps represent a sequence of tasks that will be executed as part of the job
-        steps:
-            # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - name: Checkout Repository
-              uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+          cache-dependency-path: yarn.lock
 
-            # --- Debug Step: Show Workflow File Content (Strategy 3) ---
-            - name: Debug - Show Workflow File Content
-              run: cat .github/workflows/ci-workflow.yml
-            # --- End Debug Step ---
+      - name: Install JavaScript dependencies
+        run: yarn install --frozen-lockfile
 
-            # --- Node.js Setup (for JS/TS Chaincode, Backend, React Native Frontend) ---
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20" # Consistent Node.js version
-                  cache: "yarn"
-                  cache-dependency-path: "yarn.lock"
+      - name: Build web application
+        run: yarn web3:build
 
-            # --- Python Setup (for AI Services, Utilities) ---
-            - name: Set up Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.10" # Consistent Python version
-                  # Ensure 'cache' and 'cache-dependency-path' are NOT present here anymore.
-                  # We have removed these in previous steps to resolve the cache error.
+      - name: Test credential chaincode
+        run: yarn chaincode:test
 
-            # --- Docker Setup (for building container images) ---
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+      - name: Test trust chaincode
+        run: yarn trust:test
 
-            # --- Placeholder for Linting & Formatting Steps ---
-            - name: Run JS/TS (Chaincode, Backend, Mobile Frontend) Linting & Formatting Check (Placeholder)
-              run: echo "JS/TS linting & formatting checks will be configured here for chaincode, backend, and mobile frontend."
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/identity-api/requirements.txt
 
-            - name: Run Python Linting & Formatting Check (Placeholder)
-              run: echo "Python linting & formatting checks will be configured here for AI services."
+      - name: Install identity API dependencies
+        run: pip install -r services/identity-api/requirements.txt
 
-            # --- Placeholder for Unit Tests ---
-            - name: Run Unit Tests (Placeholder)
-              run: echo "Unit tests will be configured here for JS/TS and Python code."
+      - name: Test identity API
+        run: pytest -q services/identity-api/tests
 
-            # --- Docker Build Steps (Plugs for Cloud Agnosticism) ---
-            - name: Build Chaincode Docker Image (Placeholder)
-              run: echo "Building chaincode image..."
+      - name: Validate Docker Compose
+        run: docker compose config --quiet
 
-            - name: Build Backend API Gateway Docker Image (Placeholder)
-              run: echo "Building backend API gateway image..."
-
-            - name: Build AI Service Docker Image (Placeholder)
-              run: echo "Building AI service image..."
-
-            - name: Build Mobile Frontend Docker Image (Placeholder, if applicable)
-              run: echo "Building mobile frontend image (for dev/PWA if applicable)..."
-
-            # --- Example Placeholder for Deployment (for CD, later - now purely conceptual for agnosticism) ---
-            - name: Deploy to Staging (Placeholder for CD)
-              run: echo "Deployment will be orchestrated using container-native tools (e.g., Kubernetes manifests, Docker Compose)."
+      - name: Validate operational scripts
+        run: bash -n infrastructure/scripts/*.sh

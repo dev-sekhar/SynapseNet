@@ -38,7 +38,7 @@ Strict separation:
 - **Domain Layer** → Credential, Skill, Token, Validation entities.  
 - **Infrastructure Layer** → Hyperledger Fabric network, CouchDB world state, CA/MSP.  
 
-Business logic must **only** reside in chaincode/domain services, never in controllers or UI.
+Business logic must **only** reside in blockchain/chaincode/domain services, never in controllers or UI.
 
 ---
 

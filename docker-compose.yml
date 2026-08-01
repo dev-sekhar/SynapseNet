@@ -39,9 +39,9 @@ services:
       - "7050:7050"
       - "9443:9443"
     volumes:
-      - ./fabric-network-config/channel-artifacts/genesis.block:/etc/hyperledger/fabric/genesis.block:ro
-      - ./fabric-network-config/crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/msp:/etc/hyperledger/fabric/msp:ro
-      - ./fabric-network-config/crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/tls:/etc/hyperledger/fabric/tls:ro
+      - ./blockchain/network/channel-artifacts/genesis.block:/etc/hyperledger/fabric/genesis.block:ro
+      - ./blockchain/network/crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/msp:/etc/hyperledger/fabric/msp:ro
+      - ./blockchain/network/crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/tls:/etc/hyperledger/fabric/tls:ro
       - orderer_data:/var/hyperledger/production/orderer
     networks:
       - synapsenet_test
@@ -102,8 +102,8 @@ services:
       - "9444:9444"
     volumes:
       - /var/run/docker.sock:/host/var/run/docker.sock
-      - ./fabric-network-config/crypto-config/peerOrganizations/org1.synapsenet.com/peers/peer0.org1.synapsenet.com/msp:/etc/hyperledger/fabric/msp:ro
-      - ./fabric-network-config/crypto-config/peerOrganizations/org1.synapsenet.com/peers/peer0.org1.synapsenet.com/tls:/etc/hyperledger/fabric/tls:ro
+      - ./blockchain/network/crypto-config/peerOrganizations/org1.synapsenet.com/peers/peer0.org1.synapsenet.com/msp:/etc/hyperledger/fabric/msp:ro
+      - ./blockchain/network/crypto-config/peerOrganizations/org1.synapsenet.com/peers/peer0.org1.synapsenet.com/tls:/etc/hyperledger/fabric/tls:ro
       - peer0_data:/var/hyperledger/production
     depends_on:
       couchdb0.org1.synapsenet.com:
@@ -135,9 +135,9 @@ services:
       CORE_PEER_TLS_ROOTCERT_FILE: /organizations/peerOrganizations/org1.synapsenet.com/peers/peer0.org1.synapsenet.com/tls/ca.crt
       ORDERER_CA: /organizations/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/tls/ca.crt
     volumes:
-      - ./fabric-network-config/crypto-config:/organizations:ro
-      - ./fabric-network-config/channel-artifacts:/channel-artifacts
-      - ./chaincode:/chaincode:ro
+      - ./blockchain/network/crypto-config:/organizations:ro
+      - ./blockchain/network/channel-artifacts:/channel-artifacts
+      - ./blockchain/chaincode:/chaincode:ro
     depends_on:
       peer0.org1.synapsenet.com:
         condition: service_healthy
@@ -148,7 +148,7 @@ services:
     container_name: synapsenet-skill-manager
     image: synapsenet/skill-manager:${CHAINCODE_VERSION:-1.0}
     build:
-      context: ./chaincode/skill-manager
+      context: ./blockchain/chaincode/skill-manager
     environment:
       CHAINCODE_ID: ${CHAINCODE_ID:-not-deployed}
       CHAINCODE_ADDRESS: 0.0.0.0:9999
@@ -167,7 +167,7 @@ services:
     container_name: synapsenet-trust-manager
     image: synapsenet/trust-manager:${TRUST_CHAINCODE_VERSION:-1.0}
     build:
-      context: ./chaincode/trust-manager
+      context: ./blockchain/chaincode/trust-manager
     environment:
       CHAINCODE_ID: ${TRUST_CHAINCODE_ID:-not-deployed}
     depends_on:
@@ -185,7 +185,7 @@ services:
     profiles: ["web3"]
     container_name: synapsenet-application-api
     build:
-      context: ./backend-fastapi
+      context: ./services/identity-api
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     environment:
       SYNAPSENET_SESSION_SECRET: ${SYNAPSENET_SESSION_SECRET:-local-development-change-me-32}
@@ -195,12 +195,14 @@ services:
       SYNAPSENET_FABRIC_ADAPTER_URL: http://fabric-adapter:3010
       SYNAPSENET_FABRIC_ADAPTER_TOKEN: ${FABRIC_ADAPTER_TOKEN:-local-fabric-adapter-token-change-me}
       SYNAPSENET_COOKIE_SECURE: "false"
+      SYNAPSENET_DOCS_DIR: /project-docs
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     volumes:
       - application_data:/app/data
+      - ./docs:/project-docs:ro
     networks:
       - synapsenet_test
     depends_on:
@@ -210,7 +212,7 @@ services:
     profiles: ["web3"]
     container_name: synapsenet-fabric-adapter
     build:
-      context: ./fabric-adapter
+      context: ./services/fabric-adapter
     environment:
       FABRIC_ADAPTER_TOKEN: ${FABRIC_ADAPTER_TOKEN:-local-fabric-adapter-token-change-me}
       FABRIC_CRYPTO_ROOT: /crypto
@@ -220,7 +222,7 @@ services:
       TRUST_CHANNEL_NAME: ${TRUST_CHANNEL_NAME:-synapsenet}
       FABRIC_MSP_ID: Org1MSP
     volumes:
-      - ./fabric-network-config/crypto-config:/crypto:ro
+      - ./blockchain/network/crypto-config:/crypto:ro
     networks:
       - synapsenet_test
     depends_on:

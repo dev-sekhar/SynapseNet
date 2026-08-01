@@ -1,5 +1,5 @@
 [{
-	"resource": "/c:/Users/t_cse/Documents/FunDev/SynapseNet/backend-api-gateway/Dockerfile",
+	"resource": "/c:/Users/t_cse/Documents/FunDev/SynapseNet/services/api-gateway/Dockerfile",
 	"owner": "_generated_diagnostic_collection_name_#10",
 	"code": {
 		"value": "critical_high_vulnerabilities",
@@ -19,7 +19,7 @@
 	"endColumn": 19,
 	"origin": "extHost1"
 },{
-	"resource": "/c:/Users/t_cse/Documents/FunDev/SynapseNet/ai-services/Dockerfile",
+	"resource": "/c:/Users/t_cse/Documents/FunDev/SynapseNet/services/skill-matcher/Dockerfile",
 	"owner": "_generated_diagnostic_collection_name_#10",
 	"code": {
 		"value": "critical_high_vulnerabilities",
@@ -39,7 +39,7 @@
 	"endColumn": 30,
 	"origin": "extHost1"
 },{
-	"resource": "/c:/Users/t_cse/Documents/FunDev/SynapseNet/frontend-mobile/Dockerfile",
+	"resource": "/c:/Users/t_cse/Documents/FunDev/SynapseNet/apps/mobile/Dockerfile",
 	"owner": "_generated_diagnostic_collection_name_#10",
 	"code": {
 		"value": "critical_high_vulnerabilities",

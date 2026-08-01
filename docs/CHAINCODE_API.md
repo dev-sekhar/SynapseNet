@@ -3,10 +3,16 @@
 Lifecycle versions, endorsement rules, channel routing, payload limits, CouchDB indexes,
 and migration constraints are documented in `SMART_CONTRACT_ENGINEERING.md`.
 
-## Skill manager
+## Credential domain (`skill-manager`)
 
-Contract name: `SynapseNet.SkillManagerContract`  
 Chaincode name: `skill-manager`
+
+Contract routing:
+
+- `SynapseNet.IdentityContract`: identity and issuer registry commands.
+- `SynapseNet.CredentialContract`: credential lifecycle commands and views.
+- `SynapseNet.WalletContract`: wallet and token accounting commands.
+- `SynapseNet.SharingContract`: selective disclosure commands.
 
 ### Commands
 
@@ -50,10 +56,16 @@ contains `items`, `page`, `pageSize`, `total`, and the peer event index state. B
 attempts and read-only chaincode evaluations are intentionally excluded because neither is a
 ledger state transition.
 
-## Trust manager
+## Trust domain (`trust-manager`)
 
-Contract name: `SynapseNet.TrustManagerContract`  
 Chaincode name: `trust-manager`
+
+Contract routing:
+
+- `SynapseNet.TrustPolicyContract`: policy initialization, activation, and query.
+- `SynapseNet.ParticipantTrustContract`: participant registration and query.
+- `SynapseNet.IncidentContract`: incident lifecycle and credential trust query.
+- `SynapseNet.ReputationContract`: reputation awards.
 
 ### `initializePolicy(policyJson)`
 

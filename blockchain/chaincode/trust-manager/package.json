@@ -1,0 +1,22 @@
+{
+  "name": "trust-manager",
+  "version": "1.5.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "start:server": "fabric-chaincode-node server --chaincode-address=${CHAINCODE_ADDRESS:-0.0.0.0:9998} --chaincode-id=${CHAINCODE_ID}",
+    "build": "tsc",
+    "test": "npm run build && node --test test/*.test.js"
+  },
+  "dependencies": {
+    "ethers": "^6.15.0",
+    "fabric-contract-api": "^2.5.6",
+    "fabric-shim": "^2.5.6",
+    "json-stringify-deterministic": "^1.0.12",
+    "sort-keys-recursive": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "typescript": "^5.4.5"
+  }
+}

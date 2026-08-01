@@ -8,9 +8,9 @@ governance policy, incidents, appeals, reputation, and penalty directives. Cross
 coordination belongs in the application layer; neither contract imports the other.
 
 Audited source versions and Fabric lifecycle sequences are held in
-`config/chaincode-versions.env`. A deployment must increment both the semantic version and
-the lifecycle sequence. The current audited targets are skill-manager 1.7/sequence 8 and
-trust-manager 1.4/sequence 5.
+`blockchain/config/chaincode-versions.env`. A deployment must increment both the semantic version and
+the lifecycle sequence. The current audited targets are skill-manager 1.8/sequence 9 and
+trust-manager 1.5/sequence 6.
 
 ## Channels and privacy
 

@@ -5,9 +5,9 @@
 # -----------------------------------------------------------------------------
 .DS_Store
 .env
-backend-api-gateway/data/auth.json
-backend-fastapi/data/
-backend-fastapi/.venv/
+services/api-gateway/data/auth.json
+services/identity-api/data/
+services/identity-api/.venv/
 __pycache__/
 *.pyc
 .env.*
@@ -102,8 +102,8 @@ package-lock.json
 .env.production.local
 
 # Generated Hyperledger Fabric material (contains private keys)
-fabric-network-config/crypto-config/
-fabric-network-config/channel-artifacts/
+blockchain/network/crypto-config/
+blockchain/network/channel-artifacts/
 crypto-config/
 channel-artifacts/
 config_update.json

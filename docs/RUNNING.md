@@ -122,7 +122,7 @@ If Docker reports missing bind-mounted certificate files, regenerate the network
 
 ```bash
 yarn network:reset
-rm -rf fabric-network-config/crypto-config fabric-network-config/channel-artifacts
+rm -rf blockchain/network/crypto-config blockchain/network/channel-artifacts
 yarn network:up
 ```
 

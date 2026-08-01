@@ -16,7 +16,7 @@
     },
     {
       "name": "Python syntax",
-      "command": "python3 -m compileall -q backend-fastapi/app backend-fastapi/tests backend-fastapi/migrations",
+      "command": "python3 -m compileall -q services/identity-api/app services/identity-api/tests services/identity-api/migrations",
       "status": "passed"
     },
     {

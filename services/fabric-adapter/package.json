@@ -1,0 +1,14 @@
+{
+  "name": "@synapsenet/fabric-adapter",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": { "start": "node src/server.js" },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.0",
+    "@hyperledger/fabric-gateway": "1.10.0",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "zod": "^4.0.10"
+  }
+}

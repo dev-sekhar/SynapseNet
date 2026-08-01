@@ -41,7 +41,7 @@ The local web application supports two account types:
 
 Passwords are never written to Fabric. The development gateway derives password
 hashes with Node.js `scrypt` and stores them in the ignored local file
-`backend-api-gateway/data/auth.json`. Browser sessions use HTTP-only, same-site
+`services/api-gateway/data/auth.json`. Browser sessions use HTTP-only, same-site
 cookies. Set a stable `SESSION_SECRET` environment variable outside local
 development.
 
@@ -209,11 +209,11 @@ The React 19 wallet client and FastAPI application boundary are available
 alongside the compatibility UI:
 
 ```bash
-python3 -m venv backend-fastapi/.venv
-backend-fastapi/.venv/bin/pip install -r backend-fastapi/requirements.txt
-cp backend-fastapi/.env.example backend-fastapi/.env
-# Replace both secrets in backend-fastapi/.env before starting.
-cd backend-fastapi
+python3 -m venv services/identity-api/.venv
+services/identity-api/.venv/bin/pip install -r services/identity-api/requirements.txt
+cp services/identity-api/.env.example services/identity-api/.env
+# Replace both secrets in services/identity-api/.env before starting.
+cd services/identity-api
 .venv/bin/alembic upgrade head
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
@@ -249,7 +249,7 @@ yarn trust:initialize
 ```
 
 Development penalty and reputation settings are versioned in
-`config/trust-policy.dev.json`. Production consortium policy must replace the
+`blockchain/config/trust-policy.dev.json`. Production consortium policy must replace the
 development `Org1MSP` entry with exact legal-entity MSP identifiers.
 
 After changing an already deployed chaincode definition, increment its sequence:

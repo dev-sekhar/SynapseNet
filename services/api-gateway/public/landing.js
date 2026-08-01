@@ -1,8 +1,7 @@
 const form = document.querySelector('#login-form');
 const error = document.querySelector('#login-error');
 const dashboardLink = document.querySelector('#open-dashboard');
-const next = new URLSearchParams(window.location.search).get('next');
-const destination = next && next.startsWith('/app') ? next : '/app';
+const destination = `/${window.location.search}`;
 
 async function session() {
   const response = await fetch('/api/session', { credentials: 'same-origin' });

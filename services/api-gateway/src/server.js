@@ -371,22 +371,11 @@ app.get('/vendor/axios.min.js', (_request, response) => {
 app.use(express.static(LANDING_ROOT, { index: false }));
 app.use(express.static(WEB3_DIST, { index: false }));
 
-function requirePageAuth(request, response, next) {
-    if (request.session.actor) return next();
-    const nextPath = encodeURIComponent(request.originalUrl);
-    return response.redirect(`/?next=${nextPath}`);
-}
-
-app.get('/', (_request, response) => {
-    response.sendFile(path.join(LANDING_ROOT, 'landing.html'));
-});
-
-app.get('/app', requirePageAuth, (_request, response) => {
-    response.sendFile(path.join(WEB3_DIST, 'index.html'));
-});
-
-app.get('/app/{*splat}', requirePageAuth, (_request, response) => {
-    response.sendFile(path.join(WEB3_DIST, 'index.html'));
+app.get('/', (request, response) => {
+    const page = request.session.actor
+        ? path.join(WEB3_DIST, 'index.html')
+        : path.join(LANDING_ROOT, 'landing.html');
+    response.sendFile(page);
 });
 
 const authLimiter = rateLimit({
@@ -733,7 +722,7 @@ app.post('/api/shares', requireAuth('user'), validate(shareSchema), async (reque
             ...body
         };
         const shareId = await submit('createShareGrant', JSON.stringify(payload));
-        const shareUrl = `${request.protocol}://${request.get('host')}/app?share=${encodeURIComponent(shareId)}`;
+        const shareUrl = `${request.protocol}://${request.get('host')}/?share=${encodeURIComponent(shareId)}`;
         const qrDataUrl = await QRCode.toDataURL(shareUrl, {
             errorCorrectionLevel: 'M',
             margin: 1,

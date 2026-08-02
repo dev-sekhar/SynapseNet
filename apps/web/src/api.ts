@@ -153,12 +153,12 @@ export async function businessBootstrap(): Promise<{
   directory: Array<{ userId: string; displayName: string }>;
   credentialRequests: Array<Record<string, unknown>>;
 }> {
-  return (await businessApi.get('/bootstrap')).data;
+  return (await api.get('/v2/credentials/bootstrap')).data;
 }
 
 export async function submitCredentialRequest(payload: Record<string, unknown>): Promise<string> {
   return z.object({ requestId: z.string() })
-    .parse((await businessApi.post('/credential-requests', payload)).data).requestId;
+    .parse((await api.post('/v2/credential-requests', payload)).data).requestId;
 }
 
 export async function reviewCredentialRequest(
@@ -166,7 +166,7 @@ export async function reviewCredentialRequest(
   decision: 'approve' | 'reject',
   notes: string
 ): Promise<void> {
-  await businessApi.post(`/credential-requests/${encodeURIComponent(requestId)}/review`, {
+  await api.post(`/v2/credential-requests/${encodeURIComponent(requestId)}/review`, {
     decision,
     notes
   });
@@ -183,14 +183,14 @@ export async function createCredentialShare(payload: {
     shareId: z.string(),
     shareUrl: z.string(),
     qrDataUrl: z.string()
-  }).parse((await businessApi.post('/shares', payload)).data);
+  }).parse((await api.post('/v2/shares', payload)).data);
 }
 
 export type CredentialShare = z.infer<typeof credentialShareSchema>;
 
 export async function getCredentialShare(shareId: string): Promise<CredentialShare> {
   return credentialShareSchema.parse(
-    (await businessApi.get(`/shares/${encodeURIComponent(shareId)}`)).data
+    (await api.get(`/v2/shares/${encodeURIComponent(shareId)}`)).data
   );
 }
 

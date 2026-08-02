@@ -26,7 +26,18 @@ beforeEach(() => {
             getState: async (key) => state.get(key) ?? Buffer.alloc(0),
             putState: async (key, value) => state.set(key, value),
             setEvent: (name, payload) => events.push({ name, payload }),
-            getTxTimestamp: () => ({ seconds: { toString: () => String(ledgerTime) } })
+            getTxTimestamp: () => ({ seconds: { toString: () => String(ledgerTime) } }),
+            getStateByPartialCompositeKey: async (type, parts = []) => {
+                const prefix = `${type}\u0000${parts.length ? `${parts.join('\u0000')}\u0000` : ''}`;
+                const values = [...state.entries()].filter(([key]) => key.startsWith(prefix));
+                let index = 0;
+                return {
+                    next: async () => index < values.length
+                        ? { done: false, value: { value: values[index++][1] } }
+                        : { done: true },
+                    close: async () => undefined
+                };
+            }
         }
     };
 });
@@ -170,4 +181,31 @@ test('governance activates a new immutable policy version', async () => {
     const active = JSON.parse(await contract.getActivePolicy(context));
     assert.equal(active.version, 'policy-2');
     assert.deepEqual(active.penaltyBurnBasisPoints, [1200, 3000, 10000]);
+});
+
+test('records token execution once and removes the directive from reconciliation', async () => {
+    await contract.initializePolicy(context, policy());
+    const directive = {
+        docType: 'penaltyDirective', directiveId: 'penalty-1', incidentId: 'incident-1',
+        actorId: 'user-a', burnBasisPoints: 1000, incidentNumber: 1,
+        policyVersion: 'policy-1', status: 'pending_token_execution', createdAt: '1710000000'
+    };
+    state.set(
+        context.stub.createCompositeKey('penaltyDirective', ['penalty-1']),
+        Buffer.from(JSON.stringify(directive))
+    );
+    assert.equal(JSON.parse(await contract.getPendingPenaltyDirectives(context)).length, 1);
+    const execution = JSON.stringify({
+        ownerId: 'user-a', amount: 100, balanceAfter: 900,
+        tokenTransactionId: 'penalty-penalty-1'
+    });
+    const completed = JSON.parse(
+        await contract.completePenaltyDirective(context, 'penalty-1', execution)
+    );
+    const replay = JSON.parse(
+        await contract.completePenaltyDirective(context, 'penalty-1', execution)
+    );
+    assert.equal(completed.status, 'executed');
+    assert.deepEqual(replay.execution, completed.execution);
+    assert.equal(JSON.parse(await contract.getPendingPenaltyDirectives(context)).length, 0);
 });

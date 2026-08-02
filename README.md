@@ -197,17 +197,17 @@ yarn ui:start
 
 Open <http://localhost:3001>. The root URL serves the public landing page while
 signed out and the React 19 Web3 client after sign-in; there is no separate
-`/app` entry point. The previous vanilla client remains only as compatibility
-source while its remaining credential routes are migrated.
+`/app` entry point. Credential, wallet, and sharing operations use FastAPI; Express remains
+only for password-backed business login and initial registration.
 
 The gateway listens on `0.0.0.0` by default so the Dockerized application API
 can reach it through `host.docker.internal`. Set `HOST=127.0.0.1` when the
 gateway does not need to be reached from a container.
 
-### Web3 migration client
+### Application API
 
-The React 19 wallet client and FastAPI application boundary are available
-alongside the compatibility UI:
+The React 19 wallet client uses the FastAPI application boundary for credentials, wallets,
+sharing, trust, and transaction history:
 
 ```bash
 python3 -m venv services/identity-api/.venv
@@ -226,8 +226,7 @@ yarn web3:dev
 ```
 
 Open <http://localhost:3002>. MetaMask signs a short-lived authentication
-challenge; SynapseNet never receives the wallet private key. During migration,
-ledger wallet reads are delegated to the existing gateway on port 3001.
+challenge; SynapseNet never receives the wallet private key.
 
 Alternatively, run the Python 3.13 API in Docker:
 

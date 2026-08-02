@@ -1,12 +1,17 @@
+import base64
+import asyncio
 import hashlib
 import html
+import io
+import json
 import secrets
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+import qrcode
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,6 +32,9 @@ from .schemas import (
     OrganizationApplicationResponse,
     IncidentAppealRequest,
     IncidentReportRequest,
+    CredentialReviewRequest,
+    CredentialShareRequest,
+    CredentialSubmissionRequest,
     WalletSession,
     WalletVerifyRequest,
 )
@@ -294,18 +302,39 @@ async def link_wallet(
 
 
 @app.get("/api/wallet")
-async def compatibility_wallet(request: Request):
-    if not request.session.get("wallet_address"):
-        raise HTTPException(401, "Connect and verify a wallet")
-    async with httpx.AsyncClient(base_url=settings().ledger_gateway_url, timeout=20) as client:
-        response = await client.get("/api/wallet", cookies=request.cookies)
-    if response.status_code >= 400:
-        raise HTTPException(response.status_code, "Ledger wallet is not linked to this address yet")
-    return Response(
-        content=response.content,
-        status_code=response.status_code,
-        media_type=response.headers.get("content-type", "application/json"),
-    )
+async def wallet_overview(request: Request):
+    actor = await authenticated_business_actor(request)
+    owner_id = actor["actorId"] if actor["role"] == "user" else actor["enterpriseId"]
+    credential_transaction = "getWallet" if actor["role"] == "user" else "getIssuedCredentials"
+    try:
+        wallet, credentials, requests, token_transactions = await asyncio.gather(
+            fabric_transaction("skill-manager", "getWalletAccount", [owner_id], submit=False),
+            fabric_transaction("skill-manager", credential_transaction, [owner_id], submit=False),
+            fabric_transaction("skill-manager", "getCredentialRequests", [], submit=False),
+            fabric_transaction("skill-manager", "getTokenTransactions", [owner_id], submit=False),
+        )
+        shared = await fabric_transaction(
+            "skill-manager", "getSharedCredentials", [actor["actorId"]], submit=False
+        ) if actor["role"] == "user" else []
+    except RuntimeError as error:
+        raise HTTPException(502, str(error)) from error
+    relevant = [item for item in requests if (
+        item.get("userId") == owner_id if actor["role"] == "user"
+        else item.get("enterpriseId") == owner_id
+    )]
+    return {
+        "wallet": wallet,
+        "credentials": credentials,
+        "credentialRequests": relevant,
+        "sharedCredentials": shared,
+        "credentialSummary": {
+            "total": len(relevant),
+            "approved": sum(item.get("status") == "approved" for item in relevant),
+            "pending": sum(item.get("status") == "pending_validation" for item in relevant),
+            "rejected": sum(item.get("status") == "rejected" for item in relevant),
+        },
+        "tokenTransactions": token_transactions,
+    }
 
 
 @app.get("/api/v2/transactions")
@@ -376,6 +405,180 @@ async def migration_context(request: Request):
     if response.status_code >= 400:
         raise HTTPException(response.status_code, "Compatibility session lookup failed")
     return response.json()
+
+
+async def authenticated_business_actor(request: Request) -> dict:
+    actor = (await migration_context(request)).get("actor")
+    if not actor:
+        raise HTTPException(401, "Sign in to a business profile")
+    return actor
+
+
+@app.get("/api/v2/credentials/bootstrap")
+async def credential_bootstrap(request: Request):
+    actor = await authenticated_business_actor(request)
+    try:
+        users, enterprises, requests = await asyncio.gather(
+            fabric_transaction("skill-manager", "getUsers", [], submit=False),
+            fabric_transaction("skill-manager", "getEnterprises", [], submit=False),
+            fabric_transaction("skill-manager", "getCredentialRequests", [], submit=False),
+        )
+    except RuntimeError as error:
+        raise HTTPException(502, str(error)) from error
+    relevant = [item for item in requests if (
+        item.get("userId") == actor["actorId"] if actor["role"] == "user"
+        else item.get("enterpriseId") == actor.get("enterpriseId")
+    )]
+    return {
+        "users": [item for item in users if actor["role"] != "user" or item.get("userId") == actor["actorId"]],
+        "enterprises": enterprises,
+        "directory": [{"userId": item["userId"], "displayName": item["displayName"]} for item in users],
+        "credentialRequests": relevant,
+    }
+
+
+@app.post("/api/v2/credential-requests", status_code=201)
+async def submit_credential(payload: CredentialSubmissionRequest, request: Request):
+    actor = await authenticated_business_actor(request)
+    if actor["role"] != "user":
+        raise HTTPException(403, "User access is required")
+    body = payload.model_dump(mode="json")
+    body.update({"requestId": f"request-{secrets.token_hex(12)}", "userId": actor["actorId"]})
+    try:
+        request_id = await fabric_transaction(
+            "skill-manager", "submitCredentialRequest",
+            [json.dumps(body, separators=(",", ":"), sort_keys=True)], submit=True,
+        )
+    except RuntimeError as error:
+        raise HTTPException(400, str(error)) from error
+    return {"requestId": request_id}
+
+
+@app.post("/api/v2/credential-requests/{request_id}/review")
+async def review_credential(
+    request_id: str, payload: CredentialReviewRequest, request: Request
+):
+    actor = await authenticated_business_actor(request)
+    if actor["role"] != "reviewer":
+        raise HTTPException(403, "Reviewer access is required")
+    try:
+        credential_id = await fabric_transaction(
+            "skill-manager", "reviewCredentialRequest",
+            [request_id, actor["actorId"], payload.decision, payload.notes], submit=True,
+        )
+    except RuntimeError as error:
+        raise HTTPException(400, str(error)) from error
+    return {"credentialId": credential_id or None}
+
+
+@app.post("/api/v2/shares", status_code=201)
+async def create_share(payload: CredentialShareRequest, request: Request):
+    actor = await authenticated_business_actor(request)
+    if actor["role"] != "user":
+        raise HTTPException(403, "User access is required")
+    share_id = f"share-{secrets.token_hex(12)}"
+    body = payload.model_dump(mode="json")
+    body.update({"shareId": share_id, "ownerId": actor["actorId"]})
+    try:
+        await fabric_transaction(
+            "skill-manager", "createShareGrant",
+            [json.dumps(body, separators=(",", ":"), sort_keys=True)], submit=True,
+        )
+    except RuntimeError as error:
+        raise HTTPException(400, str(error)) from error
+    share_url = f"{settings().public_app_url.rstrip('/')}/?share={quote(share_id)}"
+    image = qrcode.make(share_url)
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    return {
+        "shareId": share_id,
+        "shareUrl": share_url,
+        "qrDataUrl": f"data:image/png;base64,{base64.b64encode(output.getvalue()).decode()}",
+    }
+
+
+@app.get("/api/v2/shares/{share_id}")
+async def read_share(share_id: str, request: Request):
+    actor = await authenticated_business_actor(request)
+    try:
+        result = await fabric_transaction(
+            "skill-manager", "getShareGrant", [share_id], submit=False
+        )
+    except RuntimeError as error:
+        raise HTTPException(404, str(error)) from error
+    if actor["actorId"] not in (result["grant"]["ownerId"], result["grant"]["recipient"]):
+        raise HTTPException(403, "This credential share was issued to a different recipient")
+    if not result["accessible"]:
+        raise HTTPException(403, "This share is expired, revoked, or not active")
+    return result
+
+
+@app.post("/api/v2/shares/{share_id}/revoke", status_code=204)
+async def revoke_share(share_id: str, request: Request):
+    actor = await authenticated_business_actor(request)
+    if actor["role"] != "user":
+        raise HTTPException(403, "User access is required")
+    await fabric_transaction(
+        "skill-manager", "revokeShareGrant", [share_id, actor["actorId"]], submit=True
+    )
+    return Response(status_code=204)
+
+
+async def execute_penalty(directive: dict) -> dict:
+    actor_id = directive["actorId"]
+    users, enterprises = await asyncio.gather(
+        fabric_transaction("skill-manager", "getUsers", [], submit=False),
+        fabric_transaction("skill-manager", "getEnterprises", [], submit=False),
+    )
+    owner_id = actor_id if any(item["userId"] == actor_id for item in users) else next(
+        (item["enterpriseId"] for item in enterprises
+         if actor_id == item["enterpriseId"] or actor_id in item.get("reviewers", [])),
+        None,
+    )
+    if not owner_id:
+        raise RuntimeError(f"No credential wallet owns trust actor {actor_id}")
+    execution = await fabric_transaction(
+        "skill-manager", "executePenaltyDirective",
+        [directive["directiveId"], actor_id, owner_id, str(directive["burnBasisPoints"])],
+        submit=True,
+    )
+    return await fabric_transaction(
+        "trust-manager", "completePenaltyDirective",
+        [directive["directiveId"], json.dumps(execution, separators=(",", ":"), sort_keys=True)],
+        submit=True,
+    )
+
+
+def require_penalty_executor(token: str | None) -> None:
+    expected = settings().penalty_executor_token
+    if not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(401, "Penalty executor authorization failed")
+
+
+@app.post("/api/v2/internal/penalties/{directive_id}/execute")
+async def execute_penalty_by_id(
+    directive_id: str, x_penalty_executor_token: str | None = Header(default=None)
+):
+    require_penalty_executor(x_penalty_executor_token)
+    directive = await fabric_transaction(
+        "trust-manager", "getPenaltyDirective", [directive_id], submit=False
+    )
+    return await execute_penalty(directive)
+
+
+@app.post("/api/v2/internal/penalties/reconcile")
+async def reconcile_penalties(x_penalty_executor_token: str | None = Header(default=None)):
+    require_penalty_executor(x_penalty_executor_token)
+    directives = await fabric_transaction(
+        "trust-manager", "getPendingPenaltyDirectives", [], submit=False
+    )
+    completed, failed = [], []
+    for directive in directives:
+        try:
+            completed.append(await execute_penalty(directive))
+        except RuntimeError as error:
+            failed.append({"directiveId": directive["directiveId"], "error": str(error)})
+    return {"completed": completed, "failed": failed}
 
 
 @app.post(

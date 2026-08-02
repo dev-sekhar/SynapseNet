@@ -174,3 +174,24 @@ test('rejects malformed evidence hashes', async () => {
         /must be a SHA-256 hash/
     );
 });
+
+test('executes each finalized penalty directive exactly once', async () => {
+    await onboard();
+    const first = JSON.parse(await contract.executePenaltyDirective(
+        context, 'directive-1', 'user-a', 'user-a', '1000'
+    ));
+    const replay = JSON.parse(await contract.executePenaltyDirective(
+        context, 'directive-1', 'user-a', 'user-a', '1000'
+    ));
+    const wallet = JSON.parse(await contract.getWalletAccount(context, 'user-a'));
+    const transactions = JSON.parse(await contract.getTokenTransactions(context, 'user-a'));
+    assert.equal(first.amount, 100);
+    assert.deepEqual(replay, first);
+    assert.equal(wallet.tokenBurnt, 100);
+    assert.equal(wallet.tokenAvailable, 900);
+    assert.equal(transactions.filter((item) => item.transactionType === 'burnt').length, 1);
+    await assert.rejects(
+        contract.executePenaltyDirective(context, 'directive-1', 'user-a', 'user-a', '2500'),
+        /different parameters/
+    );
+});

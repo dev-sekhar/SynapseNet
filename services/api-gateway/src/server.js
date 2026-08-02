@@ -8,7 +8,6 @@ const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 const helmet = require('helmet');
 const pinoHttp = require('pino-http');
-const QRCode = require('qrcode');
 const { z } = require('zod');
 const {
     assertLoginAvailable,
@@ -167,10 +166,6 @@ async function evaluateTrust(transactionName, ...args) {
     );
 }
 
-function identifier(prefix) {
-    return `${prefix}-${crypto.randomUUID()}`;
-}
-
 function requireAuth(role) {
     return (request, _response, next) => {
         if (!request.session.actor) {
@@ -216,72 +211,6 @@ const enterpriseSchema = z.object({
         reviewerId: idSchema,
         reviewerName: z.string().trim().min(1).max(160),
         password: passwordSchema
-    }),
-    params: z.any(),
-    query: z.any()
-});
-const evidenceSchema = z.object({
-    evidenceId: idSchema,
-    documentType: z.string().trim().min(1).max(160),
-    fileName: z.string().trim().min(1).max(160),
-    contentHash: z.string().regex(/^(sha256:)?[a-fA-F0-9]{64}$/),
-    storageProvider: z.string().trim().min(1).max(160),
-    storageReference: z.string().max(500).optional().default('')
-});
-const skillDetailsSchema = z.object({
-    proficiencyLevel: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Expert']),
-    yearsExperience: z.number().min(0).max(80).optional(),
-    practicalApplication: z.string().trim().min(1).max(2_000),
-    tools: z.array(z.string().trim().min(1).max(100)).max(30).default([]),
-    lastUsed: z.string().regex(/^$|^\d{4}-(0[1-9]|1[0-2])$/).default(''),
-    attestations: z.array(z.string().trim().min(1).max(160)).max(20).default([])
-});
-const credentialRequestSchema = z.object({
-    body: z.object({
-        enterpriseId: idSchema,
-        credentialType: z.enum(['skill', 'role', 'education', 'certificate', 'other']),
-        title: z.string().trim().min(1).max(160),
-        details: z.record(z.string(), z.unknown()),
-        evidence: z.array(evidenceSchema).min(1).max(10)
-    }).superRefine((value, context) => {
-        if (value.credentialType !== 'skill') return;
-        const details = skillDetailsSchema.safeParse(value.details);
-        if (!details.success) {
-            for (const issue of details.error.issues) {
-                context.addIssue({ ...issue, path: ['details', ...issue.path] });
-            }
-        }
-        const allowedEvidence = new Set([
-            'Assessment Score', 'Code Repository', 'Work Deliverable',
-            'Certificate', 'Performance Review', 'Other'
-        ]);
-        value.evidence.forEach((item, index) => {
-            if (!allowedEvidence.has(item.documentType)) {
-                context.addIssue({
-                    code: 'custom', path: ['evidence', index, 'documentType'],
-                    message: 'Unsupported skill evidence document type'
-                });
-            }
-        });
-    }),
-    params: z.any(),
-    query: z.any()
-});
-const reviewSchema = z.object({
-    body: z.object({
-        decision: z.enum(['approve', 'reject']),
-        notes: z.string().trim().max(2000).default('')
-    }),
-    params: z.object({ requestId: idSchema }),
-    query: z.any()
-});
-const shareSchema = z.object({
-    body: z.object({
-        credentialIds: z.array(idSchema).min(1),
-        recipient: idSchema,
-        purpose: z.string().trim().min(1).max(2000),
-        validFrom: z.iso.datetime(),
-        expiresAt: z.iso.datetime()
     }),
     params: z.any(),
     query: z.any()
@@ -508,29 +437,6 @@ app.post('/api/logout', (request, response, next) => {
     });
 });
 
-app.get('/api/bootstrap', requireAuth(), async (request, response, next) => {
-    try {
-        const [users, enterprises, credentialRequests] = await Promise.all([
-            evaluate('getUsers'),
-            evaluate('getEnterprises'),
-            evaluate('getCredentialRequests')
-        ]);
-        const actor = request.session.actor;
-        response.json({
-            users: actor.role === 'user'
-                ? users.filter((user) => user.userId === actor.actorId)
-                : users,
-            enterprises,
-            directory: users.map(({ userId, displayName }) => ({ userId, displayName })),
-            credentialRequests: actor.role === 'user'
-                ? credentialRequests.filter((item) => item.userId === actor.actorId)
-                : credentialRequests.filter((item) => item.enterpriseId === actor.enterpriseId)
-        });
-    } catch (error) {
-        next(error);
-    }
-});
-
 app.post('/api/users', validate(userSchema), async (request, response, next) => {
     try {
         const { userId, displayName, password } = request.validated.body;
@@ -565,93 +471,6 @@ app.post('/api/enterprises', validate(enterpriseSchema), async (request, respons
             enterpriseId: id
         });
         response.status(201).json({ enterpriseId: id });
-    } catch (error) {
-        next(error);
-    }
-});
-
-app.post(
-    '/api/credential-requests',
-    requireAuth('user'),
-    validate(credentialRequestSchema),
-    async (request, response, next) => {
-    try {
-        const body = request.validated.body;
-        const payload = {
-            requestId: identifier('request'),
-            userId: request.session.actor.actorId,
-            ...body
-        };
-        const requestId = await submit('submitCredentialRequest', JSON.stringify(payload));
-        response.status(201).json({ requestId });
-    } catch (error) {
-        next(error);
-    }
-});
-
-app.post(
-    '/api/credential-requests/:requestId/review',
-    requireAuth('reviewer'),
-    validate(reviewSchema),
-    async (request, response, next) => {
-    try {
-        const { decision, notes } = request.validated.body;
-        const credentialId = await submit(
-            'reviewCredentialRequest',
-            request.validated.params.requestId,
-            request.session.actor.actorId,
-            decision,
-            notes
-        );
-        response.json({ credentialId: credentialId || null });
-    } catch (error) {
-        next(error);
-    }
-});
-
-app.post('/api/wallet/open', requireAuth(), async (request, response, next) => {
-    try {
-        const actor = request.session.actor;
-        const ownerId = actor.role === 'user' ? actor.actorId : actor.enterpriseId;
-        const ownerType = actor.role === 'user' ? 'user' : 'enterprise';
-        const walletId = await submit('openWallet', ownerId, ownerType);
-        response.status(201).json({ walletId });
-    } catch (error) {
-        next(error);
-    }
-});
-
-app.get('/api/wallet', requireAuth(), async (request, response, next) => {
-    try {
-        const actor = request.session.actor;
-        const ownerId = actor.role === 'user' ? actor.actorId : actor.enterpriseId;
-        const transactionName = actor.role === 'user' ? 'getWallet' : 'getIssuedCredentials';
-        const [wallet, credentials, requests, tokenTransactions, sharedCredentials] = await Promise.all([
-            evaluate('getWalletAccount', ownerId),
-            evaluate(transactionName, ownerId),
-            evaluate('getCredentialRequests'),
-            evaluate('getTokenTransactions', ownerId),
-            actor.role === 'user' ? evaluate('getSharedCredentials', actor.actorId) : []
-        ]);
-        const relevantRequests = requests.filter((item) => actor.role === 'user'
-            ? item.userId === ownerId
-            : item.enterpriseId === ownerId);
-        const credentialSummary = {
-            total: relevantRequests.length,
-            approved: relevantRequests.filter((item) => item.status === 'approved').length,
-            pending: relevantRequests.filter(
-                (item) => item.status === 'pending_validation'
-            ).length,
-            rejected: relevantRequests.filter((item) => item.status === 'rejected').length
-        };
-        response.json({
-            wallet,
-            credentials,
-            credentialRequests: relevantRequests,
-            sharedCredentials,
-            credentialSummary,
-            tokenTransactions
-        });
     } catch (error) {
         next(error);
     }
@@ -708,60 +527,6 @@ app.post('/api/trust/incidents', requireAuth(), validate(incidentSchema), async 
             signature
         );
         response.status(201).json({ incidentId });
-    } catch (error) {
-        next(error);
-    }
-});
-
-app.post('/api/shares', requireAuth('user'), validate(shareSchema), async (request, response, next) => {
-    try {
-        const body = request.validated.body;
-        const payload = {
-            shareId: identifier('share'),
-            ownerId: request.session.actor.actorId,
-            ...body
-        };
-        const shareId = await submit('createShareGrant', JSON.stringify(payload));
-        const shareUrl = `${request.protocol}://${request.get('host')}/?share=${encodeURIComponent(shareId)}`;
-        const qrDataUrl = await QRCode.toDataURL(shareUrl, {
-            errorCorrectionLevel: 'M',
-            margin: 1,
-            color: { dark: '#15201d', light: '#faf9f3' }
-        });
-        response.status(201).json({ shareId, shareUrl, qrDataUrl });
-    } catch (error) {
-        next(error);
-    }
-});
-
-app.get('/api/shares/:shareId', requireAuth(), async (request, response, next) => {
-    try {
-        const result = await evaluate('getShareGrant', request.params.shareId);
-        const actorId = request.session.actor.actorId;
-        if (actorId !== result.grant.recipient && actorId !== result.grant.ownerId) {
-            throw new AppError(
-                403,
-                'Forbidden',
-                'This credential share was issued to a different recipient.'
-            );
-        }
-        if (!result.accessible) {
-            throw new AppError(403, 'Share Unavailable', 'This share is expired, revoked, or not active.');
-        }
-        response.json(result);
-    } catch (error) {
-        next(error);
-    }
-});
-
-app.post('/api/shares/:shareId/revoke', requireAuth('user'), async (request, response, next) => {
-    try {
-        await submit(
-            'revokeShareGrant',
-            request.params.shareId,
-            request.session.actor.actorId
-        );
-        response.status(204).end();
     } catch (error) {
         next(error);
     }

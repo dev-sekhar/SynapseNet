@@ -12,6 +12,7 @@ Contract routing:
 - `SynapseNet.IdentityContract`: identity and issuer registry commands.
 - `SynapseNet.CredentialContract`: credential lifecycle commands and views.
 - `SynapseNet.WalletContract`: wallet and token accounting commands.
+- `SynapseNet.TokenContract`: idempotent finalized penalty execution.
 - `SynapseNet.SharingContract`: selective disclosure commands.
 
 ### Commands
@@ -28,6 +29,9 @@ Contract routing:
   and atomically writes the outcome plus an approved credential.
 - `createShareGrant(payloadJson)` and `revokeShareGrant(shareId, ownerId)` manage selective
   disclosure grants.
+- `executePenaltyDirective(directiveId, actorId, ownerId, burnBasisPoints)` burns the
+  configured percentage of available SNT once. Repeating an identical directive returns
+  its existing execution; conflicting parameters are rejected.
 
 ### Queries
 
@@ -115,9 +119,16 @@ projection becomes `trusted`, `issuer_unresponsive`, or `invalidated`.
 Awards non-transferable REP using the active policy. The reference ID makes the
 award idempotent and prevents volume farming through duplicate awards.
 
+### `completePenaltyDirective(directiveId, executionJson)`
+
+Governance records the corresponding token-domain execution proof. Repeating the same proof
+is safe; a different proof for an executed directive is rejected.
+
 ### Queries
 
 - `getParticipant(actorId)`
 - `getIncident(incidentId)`
 - `getActivePolicy()`
 - `getCredentialTrustStatus(credentialId)`
+- `getPenaltyDirective(directiveId)`
+- `getPendingPenaltyDirectives()`

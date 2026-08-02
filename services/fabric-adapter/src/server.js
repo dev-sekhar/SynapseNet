@@ -48,11 +48,14 @@ const networks = new Map([
 const allowed = new Map([
     ['trust-manager', new Set([
         'registerParticipant', 'reportIncident', 'appealIncident', 'getParticipant',
-        'getIncident', 'getActivePolicy', 'getCredentialTrustStatus'
+        'getIncident', 'getActivePolicy', 'getCredentialTrustStatus',
+        'getPenaltyDirective', 'getPendingPenaltyDirectives', 'completePenaltyDirective'
     ])],
     ['skill-manager', new Set([
+        'getUsers', 'getEnterprises', 'submitCredentialRequest', 'reviewCredentialRequest',
         'getWalletAccount', 'getWallet', 'getIssuedCredentials', 'getCredentialRequests',
-        'getTokenTransactions', 'getShareGrant'
+        'getTokenTransactions', 'openWallet', 'createShareGrant', 'revokeShareGrant',
+        'getShareGrant', 'getSharedCredentials', 'executePenaltyDirective'
     ])]
 ]);
 const smartContracts = new Map([
@@ -61,14 +64,22 @@ const smartContracts = new Map([
         ...['registerParticipant', 'getParticipant']
             .map((transaction) => [transaction, 'SynapseNet.ParticipantTrustContract']),
         ...['reportIncident', 'appealIncident', 'getIncident', 'getCredentialTrustStatus']
-            .map((transaction) => [transaction, 'SynapseNet.IncidentContract'])
+            .map((transaction) => [transaction, 'SynapseNet.IncidentContract']),
+        ...['getPenaltyDirective', 'getPendingPenaltyDirectives', 'completePenaltyDirective']
+            .map((transaction) => [transaction, 'SynapseNet.ReputationContract'])
     ])],
     ['skill-manager', new Map([
+        ...['getUsers', 'getEnterprises']
+            .map((transaction) => [transaction, 'SynapseNet.IdentityContract']),
         ...['getWallet', 'getIssuedCredentials', 'getCredentialRequests']
             .map((transaction) => [transaction, 'SynapseNet.CredentialContract']),
-        ...['getWalletAccount', 'getTokenTransactions']
+        ...['submitCredentialRequest', 'reviewCredentialRequest']
+            .map((transaction) => [transaction, 'SynapseNet.CredentialContract']),
+        ...['getWalletAccount', 'getTokenTransactions', 'openWallet']
             .map((transaction) => [transaction, 'SynapseNet.WalletContract']),
-        ['getShareGrant', 'SynapseNet.SharingContract']
+        ['executePenaltyDirective', 'SynapseNet.TokenContract'],
+        ...['createShareGrant', 'revokeShareGrant', 'getShareGrant', 'getSharedCredentials']
+            .map((transaction) => [transaction, 'SynapseNet.SharingContract'])
     ])]
 ]);
 const schema = z.object({

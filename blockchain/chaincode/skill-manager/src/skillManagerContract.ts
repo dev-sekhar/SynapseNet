@@ -105,6 +105,18 @@ export interface TokenTransaction extends LedgerRecord {
     amount: number;
     balanceAfter: number;
     description: string;
+    referenceId?: string;
+}
+
+interface PenaltyExecution extends LedgerRecord {
+    docType: 'penaltyExecution';
+    directiveId: string;
+    actorId: string;
+    ownerId: string;
+    burnBasisPoints: number;
+    amount: number;
+    balanceAfter: number;
+    tokenTransactionId: string;
 }
 
 const MAX_ID_LENGTH = 128;
@@ -414,6 +426,83 @@ export class SkillManagerContract extends Contract {
             await iterator.close();
         }
         return this.serialize(results);
+    }
+
+    public async executePenaltyDirective(
+        ctx: Context,
+        directiveId: string,
+        actorId: string,
+        ownerId: string,
+        burnBasisPointsText: string
+    ): Promise<string> {
+        const directive = this.requireId('directiveId', directiveId);
+        const actor = this.requireId('actorId', actorId);
+        const owner = this.requireId('ownerId', ownerId);
+        const burnBasisPoints = Number(burnBasisPointsText);
+        if (!Number.isSafeInteger(burnBasisPoints) || burnBasisPoints < 1 || burnBasisPoints > 10_000) {
+            throw new Error('burnBasisPoints must be an integer from 1 to 10000');
+        }
+        const executionKey = ctx.stub.createCompositeKey('penaltyExecution', [directive]);
+        const existing = await ctx.stub.getState(executionKey);
+        if (existing?.length) {
+            const execution = JSON.parse(existing.toString()) as PenaltyExecution;
+            if (execution.actorId !== actor || execution.ownerId !== owner ||
+                execution.burnBasisPoints !== burnBasisPoints) {
+                throw new Error('Penalty directive was already executed with different parameters');
+            }
+            return this.serialize(execution);
+        }
+
+        const user = await ctx.stub.getState(ctx.stub.createCompositeKey('user', [owner]));
+        if (user?.length) {
+            if (owner !== actor) throw new Error('User penalty owner must match the accused actor');
+        } else {
+            const enterprise = await this.get<Enterprise>(ctx, 'enterprise', owner);
+            if (owner !== actor && !enterprise.reviewers.includes(actor)) {
+                throw new Error('Actor is not associated with the penalty wallet owner');
+            }
+        }
+        const wallet = await this.get<Wallet>(ctx, 'wallet', owner);
+        const amount = Math.min(
+            wallet.tokenAvailable,
+            Math.ceil(wallet.tokenAvailable * burnBasisPoints / 10_000)
+        );
+        wallet.tokenBurnt += amount;
+        wallet.tokenAvailable -= amount;
+        wallet.tokenBalance = wallet.tokenAvailable;
+        await this.put(ctx, 'wallet', owner, wallet);
+
+        const tokenTransactionId = `penalty-${directive}`;
+        const transaction: TokenTransaction = {
+            ...this.audit(ctx),
+            docType: 'tokenTransaction',
+            transactionId: tokenTransactionId,
+            walletId: wallet.walletId,
+            ownerId: owner,
+            transactionType: 'burnt',
+            amount,
+            balanceAfter: wallet.tokenAvailable,
+            description: `Finalized misconduct penalty ${directive}`,
+            referenceId: directive
+        };
+        await ctx.stub.putState(
+            ctx.stub.createCompositeKey('tokenTransaction', [owner, tokenTransactionId]),
+            this.toBuffer(transaction)
+        );
+        const execution: PenaltyExecution = {
+            ...this.audit(ctx),
+            docType: 'penaltyExecution',
+            directiveId: directive,
+            actorId: actor,
+            ownerId: owner,
+            burnBasisPoints,
+            amount,
+            balanceAfter: wallet.tokenAvailable,
+            tokenTransactionId
+        };
+        await ctx.stub.putState(executionKey, this.toBuffer(execution));
+        this.event(ctx, 'PenaltyExecuted', execution);
+        return this.serialize(execution);
     }
 
     public async getIssuedCredentials(ctx: Context, enterpriseId: string): Promise<string> {

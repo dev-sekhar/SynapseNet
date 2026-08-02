@@ -9,6 +9,7 @@ test('credential chaincode exposes cohesive smart-contract boundaries', () => {
             'SynapseNet.IdentityContract',
             'SynapseNet.CredentialContract',
             'SynapseNet.WalletContract',
+            'SynapseNet.TokenContract',
             'SynapseNet.SharingContract'
         ]
     );

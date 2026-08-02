@@ -1,6 +1,6 @@
 {
   "name": "skill-manager",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "SynapseNet Skill Management Chaincode",
   "main": "dist/index.js",
   "scripts": {

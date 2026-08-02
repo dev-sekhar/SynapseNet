@@ -18,8 +18,9 @@ The browser owns the Ethereum signing key. Fabric continues to use consortium
 X.509 identities. Chaincode must validate the wallet-signed canonical intent
 and the submitter's MSP/attributes before changing state.
 
-The compatibility Express gateway remains temporarily available while routes
-move to FastAPI. Domain decisions belong in chaincode or domain services, not
+Credential, wallet, sharing, trust, and transaction routes run through FastAPI and the
+allow-listed Fabric adapter. Express remains temporarily available only for password-backed
+business sessions and registration. Domain decisions belong in chaincode or domain services, not
 HTTP controllers or React components.
 
 The adapter replays `CredentialTransaction` chaincode events from the channel and

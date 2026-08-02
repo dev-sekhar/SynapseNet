@@ -65,6 +65,18 @@ navigation bar, Roboto typography, color palette, and responsive layout:
 The landing-page **Explore the platform** link opens the project documentation
 in a new browser tab.
 
+Finalized SNT penalties are reconciled through an internal, retry-safe endpoint. Set
+`PENALTY_EXECUTOR_TOKEN` to a strong secret and call the endpoint from protected scheduler
+infrastructure:
+
+```bash
+curl -X POST http://localhost:8000/api/v2/internal/penalties/reconcile \
+  -H "X-Penalty-Executor-Token: ${PENALTY_EXECUTOR_TOKEN}"
+```
+
+The response reports completed and failed directives separately. Retrying cannot execute
+the same directive twice.
+
 To activate a ledger identity that reports `Login not configured`, or reset an
 existing password, issue a one-time token and enter it in the reset form:
 

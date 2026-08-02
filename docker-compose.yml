@@ -196,6 +196,8 @@ services:
       SYNAPSENET_FABRIC_ADAPTER_TOKEN: ${FABRIC_ADAPTER_TOKEN:-local-fabric-adapter-token-change-me}
       SYNAPSENET_COOKIE_SECURE: "false"
       SYNAPSENET_DOCS_DIR: /project-docs
+      SYNAPSENET_PUBLIC_APP_URL: ${SYNAPSENET_PUBLIC_APP_URL:-http://localhost:3001}
+      SYNAPSENET_PENALTY_EXECUTOR_TOKEN: ${PENALTY_EXECUTOR_TOKEN:-local-penalty-executor-change-me}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

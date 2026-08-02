@@ -331,6 +331,59 @@ export class TrustManagerContract extends Contract {
         ));
     }
 
+    public async getPenaltyDirective(ctx: Context, directiveId: string): Promise<string> {
+        return this.serialize(await this.get<PenaltyDirective>(
+            ctx, 'penaltyDirective', this.id(directiveId)
+        ));
+    }
+
+    public async getPendingPenaltyDirectives(ctx: Context): Promise<string> {
+        const directives: PenaltyDirective[] = [];
+        const iterator = await ctx.stub.getStateByPartialCompositeKey('penaltyDirective', []);
+        try {
+            let result = await iterator.next();
+            while (!result.done) {
+                const directive = JSON.parse(result.value.value.toString()) as PenaltyDirective;
+                if (directive.status === 'pending_token_execution') directives.push(directive);
+                result = await iterator.next();
+            }
+        } finally {
+            await iterator.close();
+        }
+        return this.serialize(directives);
+    }
+
+    public async completePenaltyDirective(
+        ctx: Context, directiveId: string, executionJson: string
+    ): Promise<string> {
+        await this.requireGovernance(ctx);
+        const directive = await this.get<PenaltyDirective>(
+            ctx, 'penaltyDirective', this.id(directiveId)
+        );
+        const execution = this.object(executionJson);
+        const normalized = {
+            ownerId: this.id(String(execution.ownerId || '')),
+            amount: Number(execution.amount),
+            balanceAfter: Number(execution.balanceAfter),
+            tokenTransactionId: this.id(String(execution.tokenTransactionId || ''))
+        };
+        if (![normalized.amount, normalized.balanceAfter].every(
+            (value) => Number.isSafeInteger(value) && value >= 0
+        )) throw new Error('Penalty execution amounts are invalid');
+        if (directive.status === 'executed') {
+            if (this.serialize(directive.execution) !== this.serialize(normalized)) {
+                throw new Error('Penalty directive was completed with different execution data');
+            }
+            return this.serialize(directive);
+        }
+        directive.status = 'executed';
+        directive.executedAt = this.time(ctx);
+        directive.execution = normalized;
+        await this.put(ctx, 'penaltyDirective', directive.directiveId, directive);
+        this.event(ctx, 'PenaltyExecutionRecorded', directive);
+        return this.serialize(directive);
+    }
+
     private async authorizeIntent(
         ctx: Context,
         intentJson: string,

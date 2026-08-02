@@ -23,10 +23,13 @@
 - Fabric adapter running internally on port 3010.
 - React build served from port 3001.
 
-## Known limitations
+## Resolved in Sprint 004
 
-- Existing credential CRUD routes still use the compatibility gateway.
+- Credential CRUD, wallet aggregation, and sharing now use FastAPI and the allow-listed adapter.
+- Final penalty directives now execute and reconcile idempotently through `TokenContract`.
+
+## Remaining limitations
+
 - Organization provisioning records applications but does not automatically
   create production infrastructure until governance approval.
 - Production consortium legal entities have not yet submitted applications.
-- Token-manager execution of final penalty directives remains separate work.

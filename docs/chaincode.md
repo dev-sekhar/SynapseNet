@@ -4,8 +4,8 @@ SynapseNet builds two business-domain chaincodes as independent Chaincode-as-a-S
 
 | Chaincode/domain | Smart contracts | Package version | Lifecycle | Service |
 |---|---|---:|---|---|
-| `skill-manager` / credentials | `IdentityContract`, `CredentialContract`, `WalletContract`, `SharingContract` | `1.8.0` | version `1.8`, sequence `9` | `skill-manager:9999` |
-| `trust-manager` / trust governance | `TrustPolicyContract`, `ParticipantTrustContract`, `IncidentContract`, `ReputationContract` | `1.5.0` | version `1.5`, sequence `6` | `trust-manager:9998` |
+| `skill-manager` / credentials | `IdentityContract`, `CredentialContract`, `WalletContract`, `TokenContract`, `SharingContract` | `1.9.0` | version `1.9`, sequence `9` | `skill-manager:9999` |
+| `trust-manager` / trust governance | `TrustPolicyContract`, `ParticipantTrustContract`, `IncidentContract`, `ReputationContract` | `1.6.0` | version `1.6`, sequence `6` | `trust-manager:9998` |
 
 Both packages are TypeScript applications targeting Node.js. They default to the `synapsenet` channel, but channel and endorsement settings are independent: `CREDENTIAL_CHANNEL_NAME`, `TRUST_CHANNEL_NAME`, `CREDENTIAL_ENDORSEMENT_POLICY`, and `TRUST_ENDORSEMENT_POLICY`.
 
@@ -39,11 +39,13 @@ flowchart LR
         Identity[IdentityContract]
         Credential[CredentialContract]
         Wallet[WalletContract]
+        Token[TokenContract]
         Sharing[SharingContract]
         CredentialDomain[(shared credential-domain implementation)]
         Identity --> CredentialDomain
         Credential --> CredentialDomain
         Wallet --> CredentialDomain
+        Token --> CredentialDomain
         Sharing --> CredentialDomain
     end
 
@@ -66,7 +68,8 @@ Typical credential-domain interactions are:
 2. `CredentialContract` validates those records when a holder submits a request and when an authorized enterprise reviewer approves it.
 3. Approval writes the credential and wallet projection atomically within the `skill-manager` transaction.
 4. `WalletContract` reads and refreshes wallet and SNT projections derived from credential-domain records.
-5. `SharingContract` verifies credential ownership before creating a recipient-, purpose-, and time-bound disclosure grant.
+5. `TokenContract` executes finalized SNT penalty directives exactly once and records the resulting burn transaction.
+6. `SharingContract` verifies credential ownership before creating a recipient-, purpose-, and time-bound disclosure grant.
 
 Typical trust-domain interactions are:
 
@@ -132,6 +135,7 @@ The skill manager controls the verifiable-credential lifecycle, evidence referen
 | Identity | `SynapseNet.IdentityContract` | `InitLedger`, participant and reviewer registration/listing |
 | Credential | `SynapseNet.CredentialContract` | credential request, review, wallet credential views |
 | Wallet | `SynapseNet.WalletContract` | wallet opening, account and token transaction views |
+| Token | `SynapseNet.TokenContract` | idempotent finalized SNT penalty execution |
 | Sharing | `SynapseNet.SharingContract` | selective share creation, revocation, and reads |
 
 `SkillManagerContract` remains an internal domain implementation used by these public contracts and by unit tests; it is not registered as a callable Fabric contract.
@@ -222,7 +226,7 @@ The trust manager links business actors to Ethereum-compatible wallets, controls
 | Trust policy | `SynapseNet.TrustPolicyContract` | initialize, activate, and read policy |
 | Participant trust | `SynapseNet.ParticipantTrustContract` | register and read wallet-bound participants |
 | Incident | `SynapseNet.IncidentContract` | report, respond, decide, appeal, finalize, and trust-status reads |
-| Reputation | `SynapseNet.ReputationContract` | policy-governed reputation awards |
+| Reputation | `SynapseNet.ReputationContract` | reputation awards plus penalty directive query and execution acknowledgement |
 
 `TrustManagerContract` remains the internal domain implementation and is not registered as a callable Fabric contract.
 
@@ -290,7 +294,7 @@ The policy defines:
 
 The development policy currently uses `Org1MSP`, burn rates of 10%, 25%, and 100%, and 14-day response and appeal windows.
 
-Confirmed misconduct subtracts the configured reputation penalty. A participant enters `probation` after a confirmed incident and becomes `suspended` on the third. The contract writes a `pending_token_execution` directive instead of directly burning tokens in the other chaincode.
+Confirmed misconduct subtracts the configured reputation penalty. A participant enters `probation` after a confirmed incident and becomes `suspended` on the third. The contract writes a `pending_token_execution` directive. The FastAPI reconciliation workflow executes it once through `TokenContract`, then records the execution proof in `trust-manager`. Retries return the existing burn rather than deducting SNT twice.
 
 ### Events
 
@@ -338,15 +342,15 @@ Each script creates a CCaaS package containing `connection.json`, CouchDB metada
 
 ## Tests
 
-`skillManagerContract.test.js` covers onboarding, pending credential submission, reviewer authorization, credential issuance, wallet projections, initial SNT accounting, selective sharing, and malformed evidence hashes.
+`skillManagerContract.test.js` covers onboarding, pending credential submission, reviewer authorization, credential issuance, wallet projections, initial SNT accounting, selective sharing, malformed evidence hashes, and replay-safe SNT penalty execution.
 
-`trustManagerContract.test.js` covers signed wallet binding, nonce replay protection, governance authorization, immutable policy activation, progressive penalty directives, and suspension after a third confirmed incident.
+`trustManagerContract.test.js` covers signed wallet binding, nonce replay protection, governance authorization, immutable policy activation, progressive penalty directives, execution acknowledgement, and suspension after a third confirmed incident.
 
 ## Current Integration Boundaries
 
 - Evidence content is not uploaded to Fabric; only proofs and storage references are stored.
 - Trust projections do not alter the source credential record in `skill-manager`.
-- Penalty directives do not automatically burn SNT; an authorized integration must execute and reconcile them.
+- Pending penalty directives are executed through the token contract by the authenticated internal reconciliation endpoint. Operators should schedule this endpoint and alert on its per-directive failures.
 - Application services are responsible for applying actor-specific visibility rules to broad ledger queries.
 - Lifecycle endorsement is configured per chaincode; every smart contract within that chaincode shares its policy.
 - Application-level MSP checks serve a different purpose from endorsement and must remain enforced.

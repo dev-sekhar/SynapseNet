@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     wallet_challenge_ttl_seconds: int = 300
     cookie_secure: bool = False
     docs_dir: str | None = None
+    public_app_url: str = "http://localhost:3001"
+    penalty_executor_token: str = "local-penalty-executor-change-me"
 
 
 @lru_cache

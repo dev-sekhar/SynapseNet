@@ -54,6 +54,18 @@ export class WalletContract extends CredentialDomainContract {
     }
 }
 
+@Info({ title: 'TokenContract', description: 'Idempotent SNT issuance and penalty accounting' })
+export class TokenContract extends CredentialDomainContract {
+    constructor() { super('SynapseNet.TokenContract'); }
+    public executePenaltyDirective(
+        ctx: Context, directiveId: string, actorId: string, ownerId: string, burnBasisPoints: string
+    ) {
+        return this.domain.executePenaltyDirective(
+            ctx, directiveId, actorId, ownerId, burnBasisPoints
+        );
+    }
+}
+
 @Info({ title: 'SharingContract', description: 'Purpose-bound selective credential disclosure' })
 export class SharingContract extends CredentialDomainContract {
     constructor() { super('SynapseNet.SharingContract'); }

@@ -1,4 +1,5 @@
-from typing import Annotated
+from datetime import datetime
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, StringConstraints
 
@@ -81,3 +82,40 @@ class IncidentReportRequest(BaseModel):
 class IncidentAppealRequest(BaseModel):
     intent: SignedIntent
     signature: Annotated[str, StringConstraints(pattern=r"^0x[a-fA-F0-9]{130}$")]
+
+
+Identifier = Annotated[
+    str, StringConstraints(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:@-]{0,127}$")
+]
+
+
+class EvidenceRequest(BaseModel):
+    evidenceId: Identifier
+    documentType: Annotated[str, StringConstraints(min_length=1, max_length=160)]
+    fileName: Annotated[str, StringConstraints(min_length=1, max_length=160)]
+    contentHash: Annotated[
+        str, StringConstraints(pattern=r"^(sha256:)?[a-fA-F0-9]{64}$")
+    ]
+    storageProvider: Annotated[str, StringConstraints(min_length=1, max_length=160)]
+    storageReference: Annotated[str, StringConstraints(max_length=500)] = ""
+
+
+class CredentialSubmissionRequest(BaseModel):
+    enterpriseId: Identifier
+    credentialType: Literal["skill", "role", "education", "certificate", "other"]
+    title: Annotated[str, StringConstraints(min_length=1, max_length=160)]
+    details: dict[str, Any]
+    evidence: Annotated[list[EvidenceRequest], Field(min_length=1, max_length=10)]
+
+
+class CredentialReviewRequest(BaseModel):
+    decision: Literal["approve", "reject"]
+    notes: Annotated[str, StringConstraints(max_length=2000)] = ""
+
+
+class CredentialShareRequest(BaseModel):
+    credentialIds: Annotated[list[Identifier], Field(min_length=1)]
+    recipient: Identifier
+    purpose: Annotated[str, StringConstraints(min_length=1, max_length=2000)]
+    validFrom: datetime
+    expiresAt: datetime

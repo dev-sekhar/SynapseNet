@@ -74,6 +74,13 @@ export interface PenaltyDirective {
     burnBasisPoints: number;
     incidentNumber: number;
     policyVersion: string;
-    status: 'pending_token_execution';
+    status: 'pending_token_execution' | 'executed';
     createdAt: string;
+    executedAt?: string;
+    execution?: {
+        ownerId: string;
+        amount: number;
+        balanceAfter: number;
+        tokenTransactionId: string;
+    };
 }

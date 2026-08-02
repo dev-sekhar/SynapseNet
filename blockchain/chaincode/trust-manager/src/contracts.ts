@@ -71,4 +71,13 @@ export class ReputationContract extends TrustDomainContract {
     public awardReputation(ctx: Context, actorId: string, performanceType: string, referenceId: string) {
         return this.domain.awardReputation(ctx, actorId, performanceType, referenceId);
     }
+    public getPenaltyDirective(ctx: Context, directiveId: string) {
+        return this.domain.getPenaltyDirective(ctx, directiveId);
+    }
+    public getPendingPenaltyDirectives(ctx: Context) {
+        return this.domain.getPendingPenaltyDirectives(ctx);
+    }
+    public completePenaltyDirective(ctx: Context, directiveId: string, executionJson: string) {
+        return this.domain.completePenaltyDirective(ctx, directiveId, executionJson);
+    }
 }

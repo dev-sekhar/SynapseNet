@@ -3,14 +3,14 @@
 ## Bounded contexts and versions
 
 `skill-manager` owns professional profiles, credential requests, credentials, shares, and
-the compatibility token wallet. `trust-manager` owns wallet identity binding, versioned
+the SNT token wallet and idempotent penalty execution. `trust-manager` owns wallet identity binding, versioned
 governance policy, incidents, appeals, reputation, and penalty directives. Cross-context
 coordination belongs in the application layer; neither contract imports the other.
 
 Audited source versions and Fabric lifecycle sequences are held in
 `blockchain/config/chaincode-versions.env`. A deployment must increment both the semantic version and
-the lifecycle sequence. The current audited targets are skill-manager 1.8/sequence 9 and
-trust-manager 1.5/sequence 6.
+the lifecycle sequence. The current audited targets are skill-manager 1.9/sequence 9 and
+trust-manager 1.6/sequence 6.
 
 ## Channels and privacy
 
@@ -44,6 +44,19 @@ Trust-manager validates submitter MSPs against versioned governance policy and p
 authority. Skill-manager binds newly registered users and enterprises to the submitter MSP
 and checks that binding during submission/review. Pre-1.6 records have no binding and remain
 in compatibility mode until migrated; API session authorization remains mandatory then.
+
+## Penalty execution and recovery
+
+Final misconduct creates a `pending_token_execution` directive in `trust-manager`. The
+internal FastAPI reconciler resolves the actor's credential-domain wallet, invokes
+`TokenContract.executePenaltyDirective`, and acknowledges the immutable execution details
+with `ReputationContract.completePenaltyDirective`. Both writes are idempotent. If the
+process stops after the burn but before acknowledgement, the next reconciliation receives
+the existing execution and completes the trust record without a second burn.
+
+Invoke `POST /api/v2/internal/penalties/reconcile` with `X-Penalty-Executor-Token` from a
+protected scheduler. Production must replace the development token and restrict network
+access to this endpoint.
 
 ## Performance and payload controls
 

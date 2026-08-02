@@ -62,7 +62,7 @@ SynapseNet/
 │   ├── chaincode/
 │   │   ├── skill-manager/
 │   │   │   ├── META-INF/statedb/couchdb/indexes/
-│   │   │   ├── src/                  # Four contracts, one credential-domain implementation
+│   │   │   ├── src/                  # Five contracts, one credential-domain implementation
 │   │   │   ├── test/
 │   │   │   ├── Dockerfile
 │   │   │   └── package.json
@@ -136,13 +136,13 @@ The database is intentionally not a top-level directory. It is private to `ident
                   ┌───────────────┴────────────────┐
                   ▼                                ▼
           services/api-gateway           services/identity-api
-          (business sessions and          (wallet identity,
-           direct Fabric access)           orgs, disputes)
-                  │                         │           │
-                  │                         ▼           └── compatibility API
-                  │              services/fabric-adapter           │
-                  │                         │                       │
-                  └──────────────┬──────────┴───────────────────────┘
+          (business login and             (credentials, wallets,
+           registration)                   sharing, trust, penalties)
+                  │                         │
+                  │                         ▼
+                  │              services/fabric-adapter
+                  │                         │
+                  └──────────────┬──────────┘
                                  ▼
                          Hyperledger Fabric
                                  │

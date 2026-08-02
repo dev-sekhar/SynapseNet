@@ -15,7 +15,8 @@ const schema = z.object({
   displayName: z.string().min(2).max(160),
   jurisdiction: z.string().min(2).max(120),
   registrationNumber: z.string().min(2).max(160),
-  requestedMspId: z.string().regex(/^[A-Za-z][A-Za-z0-9]{2,63}MSP$/, 'Use a stable ID such as IITMadrasMSP')
+  requestedMspId: z.string().regex(/^[A-Za-z][A-Za-z0-9]{2,63}MSP$/, 'Use a stable ID such as IITMadrasMSP'),
+  requestedDomain: z.string().regex(/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, 'Use a DNS domain such as credentials.example.edu')
 });
 type Form = z.infer<typeof schema>;
 
@@ -56,6 +57,7 @@ export function OrganizationOnboarding({ enabled }: { enabled: boolean }) {
           <TextField label="Jurisdiction" {...register('jurisdiction')} error={!!errors.jurisdiction} helperText={errors.jurisdiction?.message} />
           <TextField label="Legal registration number" {...register('registrationNumber')} error={!!errors.registrationNumber} helperText={errors.registrationNumber?.message} />
           <TextField label="Requested MSP ID" placeholder="IITMadrasMSP" {...register('requestedMspId')} error={!!errors.requestedMspId} helperText={errors.requestedMspId?.message} />
+          <TextField label="Fabric organization domain" placeholder="credentials.example.edu" {...register('requestedDomain')} error={!!errors.requestedDomain} helperText={errors.requestedDomain?.message} />
           <Button type="submit" variant="contained" disabled={isSubmitting}>Submit governed application</Button>
         </Stack>
       </DialogContent>

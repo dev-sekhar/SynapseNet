@@ -128,6 +128,46 @@ After changing chaincode, increase `CHAINCODE_SEQUENCE` and optionally
 CHAINCODE_SEQUENCE=2 CHAINCODE_VERSION=1.1 yarn network:deploy
 ```
 
+## Governed consortium provisioning
+
+An organization first submits its legal identity, requested MSP ID, and Fabric domain in the
+web application. A governance operator then records a resolution and reviewer identities:
+
+```bash
+GOVERNANCE_TOKEN=replace-me yarn consortium:governance list
+GOVERNANCE_TOKEN=replace-me \
+GOVERNANCE_REASON="Approved by consortium vote" \
+GOVERNANCE_REFERENCE=resolution-2026-08-02-01 \
+REVIEWER_IDS=reviewer-a,reviewer-b \
+JOIN_TRUST_CHANNEL=false \
+yarn consortium:governance approve org-application-id
+```
+
+Approval writes a manifest to `blockchain/consortium/approved`; rejected or pending
+applications never affect Fabric configuration. Verify the legal entity, domain ownership,
+MSP uniqueness, CA custody, and named reviewers before approving. Migrated applications
+with an `.invalid` placeholder domain must be rejected and resubmitted.
+
+Provision the approved topology with secrets supplied by the deployment secret store:
+
+```bash
+export CONSORTIUM_MODE=true
+export FABRIC_CA_BOOTSTRAP_PASSWORD='replace-with-secret'
+export PEER_ENROLLMENT_SECRET='replace-with-secret'
+export REVIEWER_ENROLLMENT_SECRET='replace-with-secret'
+yarn consortium:governance render
+yarn network:generate
+yarn network:up
+yarn network:create-domain-channels
+yarn network:join-consortium-peers
+```
+
+The renderer creates separate credential and trust channels and independent chaincode
+policies. Every approved issuer is a credential-channel member. Only manifests with
+`trustGovernor: true` join the trust channel. Each member must install the relevant CCaaS
+package and approve the exact definition; commit only after Fabric reports the required
+approvals. Never use the example manifest or shared development secrets in production.
+
 ## Query the chaincode manually
 
 ```bash

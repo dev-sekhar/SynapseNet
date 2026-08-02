@@ -7,5 +7,16 @@ if [[ ! -f "${NETWORK_CONFIG}/channel-artifacts/genesis.block" ]]; then
     "${PROJECT_ROOT}/infrastructure/scripts/generate-network.sh"
 fi
 
-compose up -d orderer.synapsenet.com couchdb0.org1.synapsenet.com peer0.org1.synapsenet.com cli
-echo "Fabric containers started. Run 'yarn network:create-channel' next."
+services=(orderer.synapsenet.com couchdb0.org1.synapsenet.com peer0.org1.synapsenet.com cli)
+if [[ "${CONSORTIUM_MODE:-false}" == "true" ]]; then
+    shopt -s nullglob
+    for manifest in "${PROJECT_ROOT}"/blockchain/consortium/approved/*.json; do
+        services+=(
+            "$(jq -r '.fabric.ca' "${manifest}")"
+            "couchdb0.$(jq -r '.fabric.domain' "${manifest}")"
+            "$(jq -r '.fabric.peer' "${manifest}")"
+        )
+    done
+fi
+network_compose up -d "${services[@]}"
+echo "Fabric containers started. Create the configured domain channel(s) next."

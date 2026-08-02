@@ -9,17 +9,18 @@ coordination belongs in the application layer; neither contract imports the othe
 
 Audited source versions and Fabric lifecycle sequences are held in
 `blockchain/config/chaincode-versions.env`. A deployment must increment both the semantic version and
-the lifecycle sequence. The current audited targets are skill-manager 1.9/sequence 9 and
+the lifecycle sequence. The current audited targets are skill-manager 2.0/sequence 10 and
 trust-manager 1.6/sequence 6.
 
 ## Channels and privacy
 
 The adapter routes the two contracts independently using `SKILL_CHANNEL_NAME` and
 `TRUST_CHANNEL_NAME`. Development defaults both to `synapsenet` so existing local ledger
-state remains available. Production must provision separate credential and trust channels,
-set the two variables accordingly, and grant channel membership only to organizations that
-need that bounded context. Channel separation does not replace private data collections for
-fields hidden from some members of the same channel.
+state remains available. Consortium mode renders and creates distinct `credentials` and
+`trust-governance` channels. All approved issuers join the credential channel; only
+organizations explicitly approved as trust governors join the trust channel. Channel
+separation does not replace private data collections for fields hidden from some members of
+the same channel.
 
 ## Transactions and invalid attempts
 
@@ -35,10 +36,15 @@ audited without exposing attempted payloads to end users.
 
 ## Endorsement and MSP access control
 
-Deployment scripts pass the explicit, version-controlled `ENDORSEMENT_POLICY` to approval
-and commit. Development uses `OR('Org1MSP.peer')`. Production policy changes require
-consortium governance review and a new lifecycle sequence; multi-organization policies
-should use `AND` where platform and issuer endorsement are both required.
+Deployment scripts pass explicit, version-controlled policies to approval and commit.
+Development uses `OR('Org1MSP.peer')`. Consortium rendering derives credential endorsement
+from every approved issuer and requires a majority of approved trust governors for the trust
+domain. Policy changes require consortium review and a new lifecycle sequence.
+
+`skill-manager` 2.0 additionally installs state-based endorsement on issuer-controlled
+records. Enterprise records, requests submitted to that enterprise, and credentials it
+approves require a peer from the issuer's MSP. This prevents the broad chaincode policy from
+allowing another consortium member to mutate issuer-owned state on its own.
 
 Trust-manager validates submitter MSPs against versioned governance policy and participant
 authority. Skill-manager binds newly registered users and enterprises to the submitter MSP
@@ -75,6 +81,7 @@ access to this endpoint.
 
 ## Remaining production gates
 
-Before adding consortium organizations: migrate legacy skill records to authoritative MSPs,
-provision separate channels, choose multi-party endorsement policies, and add private data
-collections for member-restricted evidence references.
+Before processing sensitive production evidence: migrate legacy skill records to
+authoritative MSPs and add private data collections for member-restricted evidence
+references. Legal identity verification, DNS ownership, CA custody, and lifecycle approvals
+remain human governance controls and must be evidenced by the recorded resolution.

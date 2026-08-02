@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1",
+  "applicationId": "example-only",
+  "governanceReference": "example-resolution",
+  "approvedAt": "2026-08-02T00:00:00+00:00",
+  "legalIdentity": {
+    "legalName": "Example University",
+    "displayName": "Example University",
+    "jurisdiction": "Example",
+    "registrationNumber": "EXAMPLE-ONLY"
+  },
+  "fabric": {
+    "mspId": "ExampleUniversityMSP",
+    "domain": "credentials.example.edu",
+    "peer": "peer0.credentials.example.edu",
+    "ca": "ca.credentials.example.edu",
+    "channels": {
+      "credentials": "credentials",
+      "trust": "trust-governance"
+    },
+    "roles": {
+      "credentialIssuer": true,
+      "trustGovernor": true
+    },
+    "enrollment": {
+      "reviewerIds": ["reviewer-example"]
+    }
+  }
+}

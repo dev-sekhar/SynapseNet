@@ -1,4 +1,5 @@
 import { Context, Contract, Info } from 'fabric-contract-api';
+import { KeyEndorsementPolicy } from 'fabric-shim';
 import stringify from 'json-stringify-deterministic';
 import sortKeysRecursive from 'sort-keys-recursive';
 
@@ -172,6 +173,7 @@ export class SkillManagerContract extends Contract {
             mspId: ctx.clientIdentity.getMSPID()
         };
         await this.put(ctx, 'enterprise', id, enterprise);
+        await this.setIssuerEndorsement(ctx, 'enterprise', id, enterprise.mspId);
         await this.ensureWallet(ctx, id, 'enterprise');
         this.event(ctx, 'EnterpriseRegistered', { enterpriseId: id, reviewerId });
         return id;
@@ -200,7 +202,7 @@ export class SkillManagerContract extends Contract {
         const userId = this.requireId('userId', String(payload.userId || ''));
         const enterpriseId = this.requireId('enterpriseId', String(payload.enterpriseId || ''));
         const user = await this.get<User>(ctx, 'user', userId);
-        await this.get<Enterprise>(ctx, 'enterprise', enterpriseId);
+        const enterprise = await this.get<Enterprise>(ctx, 'enterprise', enterpriseId);
         this.assertBoundMsp(ctx, user.mspId, 'credential holder');
         await this.assertMissing(
             ctx, 'credentialRequest', requestId, `Credential request ${requestId} already exists`
@@ -223,6 +225,9 @@ export class SkillManagerContract extends Contract {
             status: 'pending_validation'
         };
         await this.put(ctx, 'credentialRequest', requestId, request);
+        await this.setIssuerEndorsement(
+            ctx, 'credentialRequest', requestId, enterprise.mspId
+        );
         this.event(ctx, 'CredentialTransaction', {
             action: 'submit', requestId, credentialId: null, userId, enterpriseId,
             credentialType: request.credentialType, title: request.title,
@@ -288,6 +293,9 @@ export class SkillManagerContract extends Contract {
             status: 'active'
         };
         await this.put(ctx, 'credential', credentialId, credential);
+        await this.setIssuerEndorsement(
+            ctx, 'credential', credentialId, enterprise.mspId
+        );
         this.event(ctx, 'CredentialTransaction', {
             action: 'review', requestId: request.requestId, credentialId,
             userId: request.userId, enterpriseId: request.enterpriseId,
@@ -657,6 +665,17 @@ export class SkillManagerContract extends Contract {
 
     private async put(ctx: Context, type: string, id: string, value: unknown): Promise<void> {
         await ctx.stub.putState(ctx.stub.createCompositeKey(type, [id]), this.toBuffer(value));
+    }
+
+    private async setIssuerEndorsement(
+        ctx: Context, type: string, id: string, issuerMspId?: string
+    ): Promise<void> {
+        const mspId = issuerMspId || ctx.clientIdentity.getMSPID();
+        const policy = new KeyEndorsementPolicy();
+        policy.addOrgs('PEER', mspId);
+        await ctx.stub.setStateValidationParameter(
+            ctx.stub.createCompositeKey(type, [id]), policy.getPolicy()
+        );
     }
 
     private async assertMissing(

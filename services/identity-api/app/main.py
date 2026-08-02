@@ -30,6 +30,8 @@ from .schemas import (
     WalletLinkResponse,
     OrganizationApplicationRequest,
     OrganizationApplicationResponse,
+    OrganizationDecisionRequest,
+    OrganizationDecisionResponse,
     IncidentAppealRequest,
     IncidentReportRequest,
     CredentialReviewRequest,
@@ -602,6 +604,7 @@ async def apply_for_organization(
         jurisdiction=payload.jurisdiction,
         registration_number=payload.registrationNumber,
         requested_msp_id=payload.requestedMspId,
+        requested_domain=payload.requestedDomain,
         applicant_wallet=address,
         status="pending_governance",
     )
@@ -610,6 +613,120 @@ async def apply_for_organization(
     return OrganizationApplicationResponse(
         applicationId=application_id,
         status=application.status,
+    )
+
+
+def require_governance(token: str | None) -> None:
+    expected = settings().governance_token
+    if not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(401, "Governance authorization failed")
+
+
+def organization_manifest(application: OrganizationApplication, reviewer_ids: list[str]) -> dict:
+    return {
+        "schemaVersion": "1",
+        "applicationId": application.application_id,
+        "governanceReference": application.governance_reference,
+        "approvedAt": application.decided_at.isoformat() if application.decided_at else None,
+        "legalIdentity": {
+            "legalName": application.legal_name,
+            "displayName": application.display_name,
+            "jurisdiction": application.jurisdiction,
+            "registrationNumber": application.registration_number,
+        },
+        "fabric": {
+            "mspId": application.requested_msp_id,
+            "domain": application.requested_domain,
+            "peer": f"peer0.{application.requested_domain}",
+            "ca": f"ca.{application.requested_domain}",
+            "channels": {
+                "credentials": settings().credential_channel_name,
+                "trust": settings().trust_channel_name if application.join_trust_channel else None,
+            },
+            "roles": {
+                "credentialIssuer": True,
+                "trustGovernor": application.join_trust_channel,
+            },
+            "enrollment": {
+                "reviewerIds": reviewer_ids,
+            },
+        },
+    }
+
+
+@app.get("/api/v2/internal/organizations/applications")
+async def list_organization_applications(
+    status: str | None = Query(default=None),
+    x_governance_token: str | None = Header(default=None),
+    session: AsyncSession = Depends(database_session),
+):
+    require_governance(x_governance_token)
+    query = select(OrganizationApplication).order_by(OrganizationApplication.created_at)
+    if status:
+        query = query.where(OrganizationApplication.status == status)
+    applications = (await session.execute(query)).scalars().all()
+    return [{
+        "applicationId": item.application_id,
+        "legalName": item.legal_name,
+        "displayName": item.display_name,
+        "jurisdiction": item.jurisdiction,
+        "registrationNumber": item.registration_number,
+        "requestedMspId": item.requested_msp_id,
+        "requestedDomain": item.requested_domain,
+        "applicantWallet": item.applicant_wallet,
+        "status": item.status,
+        "createdAt": item.created_at,
+        "decidedAt": item.decided_at,
+        "decisionReason": item.decision_reason,
+        "governanceReference": item.governance_reference,
+    } for item in applications]
+
+
+@app.post(
+    "/api/v2/internal/organizations/applications/{application_id}/decision",
+    response_model=OrganizationDecisionResponse,
+)
+async def decide_organization_application(
+    application_id: str,
+    payload: OrganizationDecisionRequest,
+    x_governance_token: str | None = Header(default=None),
+    session: AsyncSession = Depends(database_session),
+):
+    require_governance(x_governance_token)
+    application = await session.get(OrganizationApplication, application_id)
+    if not application:
+        raise HTTPException(404, "Organization application does not exist")
+    target_status = "approved_for_provisioning" if payload.decision == "approve" else "rejected"
+    if payload.decision == "approve" and not payload.reviewerIds:
+        raise HTTPException(422, "At least one reviewer identity is required for approval")
+    if payload.decision == "approve" and application.requested_domain.endswith(".invalid"):
+        raise HTTPException(422, "Migrated applications must be rejected and resubmitted with a routable Fabric domain")
+    if application.status != "pending_governance":
+        if application.status != target_status or application.governance_reference != payload.governanceReference:
+            raise HTTPException(409, "Organization application already has a different decision")
+        manifest = json.loads(application.provisioning_manifest) if application.provisioning_manifest else None
+        return OrganizationDecisionResponse(
+            applicationId=application.application_id,
+            status=application.status,
+            provisioningManifest=manifest,
+        )
+    application.status = target_status
+    application.decided_at = datetime.now(UTC)
+    application.decision_reason = payload.reason
+    application.governance_reference = payload.governanceReference
+    application.join_trust_channel = payload.joinTrustChannel if payload.decision == "approve" else False
+    manifest = (
+        organization_manifest(application, payload.reviewerIds)
+        if payload.decision == "approve" else None
+    )
+    application.provisioning_manifest = (
+        json.dumps(manifest, separators=(",", ":"), sort_keys=True) if manifest else None
+    )
+    await session.commit()
+    return OrganizationDecisionResponse(
+        applicationId=application.application_id,
+        status=application.status,
+        provisioningManifest=manifest,
     )
 
 

@@ -4,6 +4,9 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, Field, StringConstraints
 
 EthereumAddress = Annotated[str, StringConstraints(pattern=r"^0x[a-fA-F0-9]{40}$")]
+Identifier = Annotated[
+    str, StringConstraints(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:@-]{0,127}$")
+]
 
 
 class WalletChallengeRequest(BaseModel):
@@ -63,11 +66,33 @@ class OrganizationApplicationRequest(BaseModel):
     requestedMspId: Annotated[
         str, StringConstraints(pattern=r"^[A-Za-z][A-Za-z0-9]{2,63}MSP$")
     ]
+    requestedDomain: Annotated[
+        str,
+        StringConstraints(
+            min_length=4,
+            max_length=253,
+            pattern=r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$",
+        ),
+    ]
 
 
 class OrganizationApplicationResponse(BaseModel):
     applicationId: str
     status: str
+
+
+class OrganizationDecisionRequest(BaseModel):
+    decision: Literal["approve", "reject"]
+    reason: Annotated[str, StringConstraints(min_length=3, max_length=2000)]
+    governanceReference: Identifier
+    joinTrustChannel: bool = False
+    reviewerIds: list[Identifier] = Field(default_factory=list)
+
+
+class OrganizationDecisionResponse(BaseModel):
+    applicationId: str
+    status: str
+    provisioningManifest: dict[str, Any] | None = None
 
 
 class IncidentReportRequest(BaseModel):
@@ -82,11 +107,6 @@ class IncidentReportRequest(BaseModel):
 class IncidentAppealRequest(BaseModel):
     intent: SignedIntent
     signature: Annotated[str, StringConstraints(pattern=r"^0x[a-fA-F0-9]{130}$")]
-
-
-Identifier = Annotated[
-    str, StringConstraints(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:@-]{0,127}$")
-]
 
 
 class EvidenceRequest(BaseModel):

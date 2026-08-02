@@ -75,25 +75,35 @@ SynapseNet/
 │   ├── config/
 │   │   ├── chaincode-versions.env
 │   │   └── trust-policy.dev.json
+│   ├── consortium/                    # Governed organization manifests and schema
+│   │   ├── approved/                  # Approved manifests drive production rendering
+│   │   ├── examples/                  # Non-production examples
+│   │   └── organization-manifest.schema.json
 │   └── network/
 │       ├── configtx.yaml
 │       ├── core.yaml
 │       ├── crypto-config.yaml
+│       ├── generated/                 # Ignored rendered consortium topology
 │       └── docker-compose.yaml
 ├── infrastructure/                    # Repeatable operational automation
 │   └── scripts/
 │       ├── auth-admin.js
 │       ├── common.sh
 │       ├── create-channel.sh
+│       ├── create-domain-channels.sh
 │       ├── deploy-chaincode.sh
 │       ├── deploy-trust-chaincode.sh
+│       ├── enroll-consortium-organization.sh
 │       ├── generate-network.sh
+│       ├── governance-organization.sh
 │       ├── initialize-trust-policy.sh
 │       ├── initialize-wallets.sh
 │       ├── list-users.sh
 │       ├── network-down.sh
 │       ├── network-reset.sh
 │       ├── network-up.sh
+│       ├── join-consortium-peers.sh
+│       ├── render-consortium-config.py
 │       └── smoke-test.sh
 ├── docs/                              # Product and engineering documentation
 │   ├── adr/
@@ -123,7 +133,7 @@ SynapseNet/
 | Database | `services/identity-api/app/models.py`, `services/identity-api/migrations` | Relational models and schema migrations owned exclusively by the identity API. |
 | Blockchain integration | `services/fabric-adapter` | Fabric peer connectivity and transaction submission/evaluation for the identity API. |
 | Smart contracts | `blockchain/chaincode` | Deterministic credential and trust ledger rules. |
-| Blockchain network | `blockchain/network`, `blockchain/config` | Fabric topology, channel configuration, lifecycle versions, and trust policy defaults. |
+| Blockchain network | `blockchain/network`, `blockchain/config`, `blockchain/consortium` | Fabric topology, governed membership, channel configuration, lifecycle versions, and trust policy defaults. |
 | Infrastructure | `infrastructure/scripts`, `docker-compose.yml`, `.github/workflows` | Local operations, deployment automation, containers, and CI. |
 
 The database is intentionally not a top-level directory. It is private to `identity-api`, so keeping models and migrations with that service makes schema ownership explicit and prevents other services from coupling directly to its tables.

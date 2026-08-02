@@ -207,6 +207,7 @@ export async function applyForOrganization(payload: {
   jurisdiction: string;
   registrationNumber: string;
   requestedMspId: string;
+  requestedDomain: string;
 }): Promise<{ applicationId: string; status: string }> {
   const response = await api.post('/v2/organizations/applications', payload);
   return z.object({ applicationId: z.string(), status: z.string() }).parse(response.data);

@@ -14,6 +14,11 @@ if [[ -f "${PROJECT_ROOT}/blockchain/config/chaincode-versions.env" ]]; then
     # shellcheck disable=SC1091
     source "${PROJECT_ROOT}/blockchain/config/chaincode-versions.env"
 fi
+if [[ "${CONSORTIUM_MODE:-false}" == "true" && \
+      -f "${PROJECT_ROOT}/blockchain/network/generated/chaincode-policies.env" ]]; then
+    # shellcheck disable=SC1091
+    source "${PROJECT_ROOT}/blockchain/network/generated/chaincode-policies.env"
+fi
 [[ -n "${REQUESTED_CHAINCODE_VERSION}" ]] && CHAINCODE_VERSION="${REQUESTED_CHAINCODE_VERSION}"
 [[ -n "${REQUESTED_CHAINCODE_SEQUENCE}" ]] && CHAINCODE_SEQUENCE="${REQUESTED_CHAINCODE_SEQUENCE}"
 [[ -n "${REQUESTED_TRUST_VERSION}" ]] && TRUST_CHAINCODE_VERSION="${REQUESTED_TRUST_VERSION}"
@@ -43,6 +48,16 @@ compose() {
     else
         echo "Docker Compose is required (docker compose or docker-compose)." >&2
         return 1
+    fi
+}
+
+network_compose() {
+    if [[ "${CONSORTIUM_MODE:-false}" == "true" && \
+          -f "${NETWORK_CONFIG}/generated/docker-compose.organizations.yaml" ]]; then
+        compose -f docker-compose.yml \
+            -f blockchain/network/generated/docker-compose.organizations.yaml "$@"
+    else
+        compose "$@"
     fi
 }
 

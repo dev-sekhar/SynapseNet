@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, LargeBinary, String, func
+from sqlalchemy import Boolean, DateTime, LargeBinary, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -49,6 +49,12 @@ class OrganizationApplication(Base):
     jurisdiction: Mapped[str] = mapped_column(String(120))
     registration_number: Mapped[str] = mapped_column(String(160))
     requested_msp_id: Mapped[str] = mapped_column(String(128), unique=True)
+    requested_domain: Mapped[str] = mapped_column(String(253), unique=True)
     applicant_wallet: Mapped[str] = mapped_column(String(42), index=True)
     status: Mapped[str] = mapped_column(String(32), default="pending_governance")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_reason: Mapped[str | None] = mapped_column(String(2000))
+    governance_reference: Mapped[str | None] = mapped_column(String(128))
+    join_trust_channel: Mapped[bool] = mapped_column(Boolean, default=False)
+    provisioning_manifest: Mapped[str | None] = mapped_column(Text)

@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     docs_dir: str | None = None
     public_app_url: str = "http://localhost:3001"
     penalty_executor_token: str = "local-penalty-executor-change-me"
+    governance_token: str = "local-governance-change-me"
+    credential_channel_name: str = "credentials"
+    trust_channel_name: str = "trust-governance"
 
 
 @lru_cache

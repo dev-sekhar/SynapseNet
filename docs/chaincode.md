@@ -4,7 +4,7 @@ SynapseNet builds two business-domain chaincodes as independent Chaincode-as-a-S
 
 | Chaincode/domain | Smart contracts | Package version | Lifecycle | Service |
 |---|---|---:|---|---|
-| `skill-manager` / credentials | `IdentityContract`, `CredentialContract`, `WalletContract`, `TokenContract`, `SharingContract` | `1.9.0` | version `1.9`, sequence `9` | `skill-manager:9999` |
+| `skill-manager` / credentials | `IdentityContract`, `CredentialContract`, `WalletContract`, `TokenContract`, `SharingContract` | `2.0.0` | version `2.0`, sequence `10` | `skill-manager:9999` |
 | `trust-manager` / trust governance | `TrustPolicyContract`, `ParticipantTrustContract`, `IncidentContract`, `ReputationContract` | `1.6.0` | version `1.6`, sequence `6` | `trust-manager:9998` |
 
 Both packages are TypeScript applications targeting Node.js. They default to the `synapsenet` channel, but channel and endorsement settings are independent: `CREDENTIAL_CHANNEL_NAME`, `TRUST_CHANNEL_NAME`, `CREDENTIAL_ENDORSEMENT_POLICY`, and `TRUST_ENDORSEMENT_POLICY`.
@@ -26,6 +26,12 @@ Fabric Adapter
 ```
 
 The chaincodes are packaged, installed, approved, and committed separately. Peers maintain a separate world-state namespace for each chaincode, while smart contracts inside one package share that chaincode namespace. The packages do not call each other with `invokeChaincode`; application services coordinate them through explicit transactions and shared actor/credential IDs. This avoids cross-chaincode latency, partial-failure, and cross-channel consistency hazards.
+
+Production topology uses separate `credentials` and `trust-governance` channels. The
+credential chaincode has a generated policy containing every approved issuer; trust-manager
+requires a majority of approved trust governors. In addition, issuer enterprise, request,
+and approved credential keys use Fabric state-based endorsement requiring that issuer's MSP.
+The key-level requirement is combined with the chaincode policy during validation.
 
 This is intentionally two chaincodes—not one per contract. Credential identity, issuance, wallets, and sharing change together and share governance. Trust policy, participants, incidents, and reputation form a second cohesive domain with a distinct governance and upgrade boundary.
 

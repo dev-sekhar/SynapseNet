@@ -198,6 +198,9 @@ services:
       SYNAPSENET_DOCS_DIR: /project-docs
       SYNAPSENET_PUBLIC_APP_URL: ${SYNAPSENET_PUBLIC_APP_URL:-http://localhost:3001}
       SYNAPSENET_PENALTY_EXECUTOR_TOKEN: ${PENALTY_EXECUTOR_TOKEN:-local-penalty-executor-change-me}
+      SYNAPSENET_GOVERNANCE_TOKEN: ${GOVERNANCE_TOKEN:-local-governance-change-me}
+      SYNAPSENET_CREDENTIAL_CHANNEL_NAME: ${CREDENTIAL_CHANNEL_NAME:-credentials}
+      SYNAPSENET_TRUST_CHANNEL_NAME: ${TRUST_CHANNEL_NAME:-trust-governance}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

@@ -6,11 +6,13 @@ let contract;
 let state;
 let events;
 let context;
+let validationPolicies;
 
 beforeEach(() => {
     contract = new SkillManagerContract();
     state = new Map();
     events = [];
+    validationPolicies = new Map();
     context = {
         clientIdentity: {
             getID: () => 'x509::/CN=Admin@org1.synapsenet.com',
@@ -20,6 +22,7 @@ beforeEach(() => {
             createCompositeKey: (type, parts) => `${type}\u0000${parts.join('\u0000')}\u0000`,
             getState: async (key) => state.get(key) ?? Buffer.alloc(0),
             putState: async (key, value) => state.set(key, value),
+            setStateValidationParameter: async (key, policy) => validationPolicies.set(key, policy),
             setEvent: (name, payload) => events.push({ name, payload }),
             getTxID: () => 'fabric-transaction-1',
             getTxTimestamp: () => ({ seconds: { toString: () => '1710000000' } }),
@@ -89,6 +92,9 @@ test('submits evidence-backed credential requests as pending', async () => {
     assert.equal(request.status, 'pending_validation');
     assert.equal(request.evidence[0].hashAlgorithm, 'SHA-256');
     assert.equal(request.transactionId, 'fabric-transaction-1');
+    assert.ok(validationPolicies.has(
+        context.stub.createCompositeKey('credentialRequest', ['request-1'])
+    ));
     const transactionEvent = events.find(({ name }) => name === 'CredentialTransaction');
     assert.equal(JSON.parse(transactionEvent.payload).credentialType, 'skill');
 });

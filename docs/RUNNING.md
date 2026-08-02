@@ -48,11 +48,22 @@ Keep the Fabric network running, then start the local gateway and browser UI:
 yarn ui:start
 ```
 
-Open <http://localhost:3001>. Register and sign in as either a user or enterprise
-reviewer. The UI provides role-specific onboarding, bespoke credential forms,
+Open <http://localhost:3001>. This is the only browser entry point: it displays
+the public landing page while signed out and the application after successful
+sign-in. Register and sign in as either a user or enterprise reviewer. The UI provides role-specific onboarding, bespoke credential forms,
 enterprise validation, user and enterprise credential wallets, dummy SNT token
 balances, and recipient-authenticated selective QR sharing. Stop the UI with
 `Ctrl+C`; this does not stop Fabric.
+
+Project and API documentation is served by the application API with one shared
+navigation bar, Roboto typography, color palette, and responsive layout:
+
+- Project documents: <http://localhost:8000/docs>
+- Swagger API: <http://localhost:8000/api/docs>
+- ReDoc API: <http://localhost:8000/api/redoc>
+
+The landing-page **Explore the platform** link opens the project documentation
+in a new browser tab.
 
 To activate a ledger identity that reports `Login not configured`, or reset an
 existing password, issue a one-time token and enter it in the reset form:

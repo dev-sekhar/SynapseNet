@@ -195,9 +195,10 @@ yarn network:deploy
 yarn ui:start
 ```
 
-Open <http://localhost:3001>. This now serves the React 19 Web3 client. The
-previous vanilla client remains only as compatibility source while its
-remaining credential routes are migrated.
+Open <http://localhost:3001>. The root URL serves the public landing page while
+signed out and the React 19 Web3 client after sign-in; there is no separate
+`/app` entry point. The previous vanilla client remains only as compatibility
+source while its remaining credential routes are migrated.
 
 The gateway listens on `0.0.0.0` by default so the Dockerized application API
 can reach it through `host.docker.internal`. Set `HOST=127.0.0.1` when the
@@ -235,6 +236,10 @@ docker-compose --profile web3 up -d application-api
 ```
 
 The API applies its SQLite migrations at startup and listens on port 8000.
+Project documents are available at <http://localhost:8000/docs>, Swagger at
+<http://localhost:8000/api/docs>, and ReDoc at
+<http://localhost:8000/api/redoc>. All three documentation views use the same
+SynapseNet navigation and visual theme.
 
 ### Trust manager
 

@@ -73,44 +73,72 @@ def documentation_root() -> Path:
     return Path(configured).resolve() if configured else Path(__file__).resolve().parents[3] / "docs"
 
 
-DOCUMENTATION_TOP_BAR = """<header class="synapsenet-docs-bar">
-<a class="synapsenet-docs-brand" href="/docs">SynapseNet Documentation</a>
-<nav aria-label="Documentation navigation">
-<a href="http://localhost:3001/">Home</a><a href="/docs">Project Docs</a>
-<a href="/api/docs">Swagger API</a><a href="/api/redoc">ReDoc</a>
-</nav></header>"""
 DOCUMENTATION_TOP_BAR_CSS = """
 .synapsenet-docs-bar{box-sizing:border-box;position:sticky;top:0;z-index:10000;height:68px;
 display:flex;align-items:center;justify-content:space-between;padding:0 28px;color:#fff;background:#172033;
-font-family:Roboto,Arial,sans-serif}.synapsenet-docs-bar *{box-sizing:border-box}
+font-family:Roboto,Arial,sans-serif;box-shadow:0 1px 0 rgba(255,255,255,.1)}.synapsenet-docs-bar *{box-sizing:border-box}
 .synapsenet-docs-brand{color:#fff!important;text-decoration:none;font-size:20px;font-weight:700}
 .synapsenet-docs-bar nav{display:flex;align-items:center;gap:18px}.synapsenet-docs-bar nav a{color:#9ee5d3!important;
-text-decoration:none;font-size:14px;font-weight:700}@media(max-width:700px){.synapsenet-docs-bar{height:auto;
+text-decoration:none;font-size:14px;font-weight:700;padding:8px 0;border-bottom:2px solid transparent}
+.synapsenet-docs-bar nav a:hover,.synapsenet-docs-bar nav a.active{color:#fff!important;border-bottom-color:#9ee5d3}
+@media(max-width:700px){.synapsenet-docs-bar{height:auto;
 min-height:68px;align-items:flex-start;gap:10px;padding:16px;flex-direction:column}.synapsenet-docs-bar nav{gap:12px;flex-wrap:wrap}}
+"""
+API_DOCUMENTATION_CSS = """
+html,body{margin:0;background:#f6f7fb!important;color:#172033;font-family:Roboto,Arial,sans-serif}
+.swagger-ui{max-width:1500px;margin:0 auto;padding:20px clamp(16px,4vw,60px) 48px}
+.swagger-ui .topbar{display:none}.swagger-ui,.swagger-ui .info .title,.swagger-ui .opblock-tag,
+.swagger-ui button,.swagger-ui input,.swagger-ui select,.swagger-ui textarea{font-family:Roboto,Arial,sans-serif}
+.swagger-ui .info{margin:24px 0 32px}.swagger-ui .info .title{color:#172033}
+.swagger-ui .scheme-container{margin:0 0 24px;padding:20px;border:1px solid #dfe3ec;border-radius:12px;
+box-shadow:none;background:#fff}.swagger-ui .opblock-tag{color:#172033;border-bottom-color:#dfe3ec}
+.swagger-ui .opblock{border-radius:10px;box-shadow:none}.swagger-ui section.models{border-color:#dfe3ec;border-radius:12px;background:#fff}
+.redoc-wrap{min-height:calc(100vh - 68px)!important;background:#f6f7fb!important}
+.redoc-wrap,.redoc-wrap h1,.redoc-wrap h2,.redoc-wrap h3,.redoc-wrap h4,.redoc-wrap h5,
+.redoc-wrap button,.redoc-wrap input{font-family:Roboto,Arial,sans-serif!important}
 """
 
 
-def with_documentation_top_bar(page: HTMLResponse) -> HTMLResponse:
+def documentation_top_bar(active: str) -> str:
+    links = (
+        ("home", "http://localhost:3001/", "Home"),
+        ("project", "/docs", "Project Docs"),
+        ("swagger", "/api/docs", "Swagger API"),
+        ("redoc", "/api/redoc", "ReDoc"),
+    )
+    navigation = "".join(
+        f'<a class="{"active" if key == active else ""}" href="{href}">{label}</a>'
+        for key, href, label in links
+    )
+    return (
+        '<header class="synapsenet-docs-bar">'
+        '<a class="synapsenet-docs-brand" href="/docs">SynapseNet Documentation</a>'
+        f'<nav aria-label="Documentation navigation">{navigation}</nav></header>'
+    )
+
+
+def with_documentation_shell(page: HTMLResponse, active: str) -> HTMLResponse:
     markup = page.body.decode("utf-8")
-    markup = markup.replace("</head>", f"<style>{DOCUMENTATION_TOP_BAR_CSS}</style></head>")
-    markup = markup.replace("<body>", f"<body>{DOCUMENTATION_TOP_BAR}", 1)
+    styles = DOCUMENTATION_TOP_BAR_CSS + API_DOCUMENTATION_CSS
+    markup = markup.replace("</head>", f"<style>{styles}</style></head>")
+    markup = markup.replace("<body>", f"<body>{documentation_top_bar(active)}", 1)
     return HTMLResponse(markup)
 
 
 @app.get("/api/docs", response_class=HTMLResponse, include_in_schema=False)
 async def swagger_documentation():
-    return with_documentation_top_bar(get_swagger_ui_html(
+    return with_documentation_shell(get_swagger_ui_html(
         openapi_url=app.openapi_url,
         title=f"{app.title} - Swagger API",
-    ))
+    ), "swagger")
 
 
 @app.get("/api/redoc", response_class=HTMLResponse, include_in_schema=False)
 async def redoc_documentation():
-    return with_documentation_top_bar(get_redoc_html(
+    return with_documentation_shell(get_redoc_html(
         openapi_url=app.openapi_url,
         title=f"{app.title} - ReDoc",
-    ))
+    ), "redoc")
 
 
 @app.get("/docs", response_class=HTMLResponse, include_in_schema=False)
@@ -139,7 +167,7 @@ aside{{padding:24px 16px;border-right:1px solid #dfe3ec;background:white}}aside 
 aside a{{display:block;padding:10px 12px;border-radius:7px;color:#394357;text-decoration:none;font-size:14px}}aside a:hover,aside a.active{{color:#4d3ec5;background:#efedff}}
 article{{min-width:0;padding:32px clamp(24px,5vw,76px)}}article h1{{margin-top:0;font-size:32px}}pre{{margin:0;padding:30px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #dfe3ec;border-radius:12px;background:white;font:14px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace}}
 @media(max-width:760px){{main{{grid-template-columns:1fr}}aside{{border-right:0;border-bottom:1px solid #dfe3ec}}}}
-</style><style>{DOCUMENTATION_TOP_BAR_CSS}</style></head><body>{DOCUMENTATION_TOP_BAR}
+</style><style>{DOCUMENTATION_TOP_BAR_CSS}</style></head><body>{documentation_top_bar("project")}
 <main><aside><h2>Project documents</h2>{navigation}</aside><article><h1>{html.escape(selected or "Documentation")}</h1><pre>{html.escape(content)}</pre></article></main>
 </body></html>""")
 

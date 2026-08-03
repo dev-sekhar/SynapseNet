@@ -9,7 +9,7 @@ coordination belongs in the application layer; neither contract imports the othe
 
 Audited source versions and Fabric lifecycle sequences are held in
 `blockchain/config/chaincode-versions.env`. A deployment must increment both the semantic version and
-the lifecycle sequence. The current audited targets are skill-manager 2.0/sequence 10 and
+the lifecycle sequence. The current audited targets are skill-manager 2.1/sequence 11 and
 trust-manager 1.6/sequence 6.
 
 ## Channels and privacy
@@ -79,9 +79,16 @@ access to this endpoint.
   up to 20 messages per block. Existing channels need a governed config update before these
   values take effect.
 
-## Remaining production gates
+## Production evidence and identity controls
 
-Before processing sensitive production evidence: migrate legacy skill records to
-authoritative MSPs and add private data collections for member-restricted evidence
-references. Legal identity verification, DNS ownership, CA custody, and lifecycle approvals
-remain human governance controls and must be evidenced by the recorded resolution.
+Evidence content and storage references are not placed in a Fabric private-data collection:
+they are removed from transaction payloads entirely. Fabric stores the content hash and an
+opaque application metadata ID; the application encrypts the reference with AES-256-GCM.
+This provides stronger channel privacy than distributing the sensitive value to peer private
+state. Private collections remain appropriate only if a future workflow requires peers to
+execute deterministic logic over sensitive values.
+
+Production disables legacy business sessions and admin-certificate fallback. Actor
+certificates carry `synapsenet.actorId` and `synapsenet.role`; chaincode checks these values in
+addition to MSP binding and state-based endorsement. Legal checks, DNS ownership, CA custody,
+and lifecycle approvals remain recorded human governance controls.

@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 os.environ.setdefault("SYNAPSENET_FABRIC_ADAPTER_TOKEN", "test-adapter-token")
 os.environ.setdefault("SYNAPSENET_SESSION_SECRET", "test-session-secret")
-os.environ.setdefault("SYNAPSENET_ENCRYPTION_KEY", "test-encryption-key")
+os.environ["SYNAPSENET_ENCRYPTION_KEY"] = "eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHg="
 
 from app import main
 

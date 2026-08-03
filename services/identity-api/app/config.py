@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     governance_token: str = "local-governance-change-me"
     credential_channel_name: str = "credentials"
     trust_channel_name: str = "trust-governance"
+    require_wallet_for_credentials: bool = False
+    operations_token: str = "local-operations-change-me"
+    allow_legacy_business_sessions: bool = True
 
 
 @lru_cache

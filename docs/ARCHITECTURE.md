@@ -23,11 +23,15 @@ allow-listed Fabric adapter. Express remains temporarily available only for pass
 business sessions and registration. Domain decisions belong in chaincode or domain services, not
 HTTP controllers or React components.
 
-The adapter replays `CredentialTransaction` chaincode events from the channel and
-projects the real Fabric transaction ID and block number for the scanner API. The
-projection can be rebuilt from the immutable ledger and is therefore not a second
-system of record. Future webhook delivery should consume this same committed-event
-stream after machine-to-machine authentication is introduced.
+The adapter replays `CredentialTransaction` and filtered block events, projects real
+transaction IDs and block numbers, and persists a sanitized JSONL audit index on a dedicated
+volume. Valid credential events remain rebuildable from the immutable ledger. Invalid entries
+contain only transaction ID, block, channel, and validation code—never attempted payloads.
+
+Sensitive evidence locations never enter Fabric. The public credential record contains the
+document hash and opaque metadata identifier; filename, provider, and storage location are
+AES-256-GCM encrypted in SQLite with authenticated associated data. Only the holder and the
+assigned issuer reviewer can request decryption.
 
 The adapter accepts independent `SKILL_CHANNEL_NAME` and `TRUST_CHANNEL_NAME` values.
 They default to the existing development channel, while production places credential and
@@ -37,7 +41,8 @@ lifecycle, MSP, endorsement, indexing, payload, and migration controls.
 ## Trust boundaries
 
 - MetaMask proves holder authorization, not issuer authority.
-- Issuer X.509 identity and peer endorsement prove issuer authority.
+- Issuer X.509 identity, `synapsenet.actorId`/`synapsenet.role` certificate attributes, and
+  peer endorsement prove issuer authority.
 - Raft provides crash-fault-tolerant ordering, not protection from malicious
   credential approval.
 - Challenge adjudication and issuer governance address malicious behavior.

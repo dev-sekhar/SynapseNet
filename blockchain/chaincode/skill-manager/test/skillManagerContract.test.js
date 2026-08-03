@@ -181,6 +181,22 @@ test('rejects malformed evidence hashes', async () => {
     );
 });
 
+test('rejects a reviewer certificate attributed to another actor', async () => {
+    await contract.registerUser(context, 'user-cert', 'Certificate User');
+    await contract.registerEnterprise(context, 'issuer-cert', 'Certificate Issuer', 'reviewer-cert');
+    const payload = JSON.parse(requestPayload());
+    payload.requestId = 'request-cert';
+    payload.userId = 'user-cert';
+    payload.enterpriseId = 'issuer-cert';
+    await contract.submitCredentialRequest(context, JSON.stringify(payload));
+    context.clientIdentity.getAttributeValue = (name) => name === 'synapsenet.actorId'
+        ? 'different-reviewer' : 'reviewer';
+    await assert.rejects(
+        contract.reviewCredentialRequest(context, 'request-cert', 'reviewer-cert', 'approve', ''),
+        /not authorized as reviewer/
+    );
+});
+
 test('executes each finalized penalty directive exactly once', async () => {
     await onboard();
     const first = JSON.parse(await contract.executePenaltyDirective(

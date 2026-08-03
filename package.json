@@ -29,6 +29,8 @@
     "wallets:initialize": "./infrastructure/scripts/initialize-wallets.sh",
     "consortium:governance": "./infrastructure/scripts/governance-organization.sh",
     "consortium:enroll": "./infrastructure/scripts/enroll-consortium-organization.sh",
+    "consortium:enroll-actor": "./infrastructure/scripts/enroll-actor-identity.sh",
+    "operations:backup": "./infrastructure/scripts/backup-application-data.sh",
     "ui:start": "yarn workspace @synapsenet/api-gateway start",
     "web3:dev": "yarn workspace @synapsenet/web dev",
     "web3:build": "yarn workspace @synapsenet/web build",

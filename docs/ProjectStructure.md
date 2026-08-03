@@ -93,6 +93,8 @@ SynapseNet/
 │       ├── create-domain-channels.sh
 │       ├── deploy-chaincode.sh
 │       ├── deploy-trust-chaincode.sh
+│       ├── backup-application-data.sh
+│       ├── enroll-actor-identity.sh
 │       ├── enroll-consortium-organization.sh
 │       ├── generate-network.sh
 │       ├── governance-organization.sh

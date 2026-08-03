@@ -37,6 +37,11 @@ class EncryptedMetadata(Base):
     ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
     nonce: Mapped[bytes] = mapped_column(LargeBinary)
     schema_version: Mapped[str] = mapped_column(String(32))
+    owner_actor_id: Mapped[str | None] = mapped_column(String(128), index=True)
+    issuer_enterprise_id: Mapped[str | None] = mapped_column(String(128), index=True)
+    evidence_id: Mapped[str | None] = mapped_column(String(128), unique=True)
+    key_version: Mapped[str] = mapped_column(String(32), default="v1")
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

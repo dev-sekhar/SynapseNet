@@ -50,7 +50,7 @@ docker run --rm --network synapsenet_test \
         printf "NodeOUs:\n  Enable: true\n  ClientOUIdentifier:\n    Certificate: cacerts/%s\n    OrganizationalUnitIdentifier: client\n  PeerOUIdentifier:\n    Certificate: cacerts/%s\n    OrganizationalUnitIdentifier: peer\n  AdminOUIdentifier:\n    Certificate: cacerts/%s\n    OrganizationalUnitIdentifier: admin\n  OrdererOUIdentifier:\n    Certificate: cacerts/%s\n    OrganizationalUnitIdentifier: orderer\n" "$ca_name" "$ca_name" "$ca_name" "$ca_name" > "$msp/config.yaml"
       done
       for reviewer in $(echo "$REVIEWERS" | tr "," " "); do
-        fabric-ca-client register --id.name "$reviewer" --id.secret "$REVIEWER_SECRET" --id.type client --id.attrs "synapsenet.role=reviewer:ecert" --tls.certfiles "$tls" || true
+        fabric-ca-client register --id.name "$reviewer" --id.secret "$REVIEWER_SECRET" --id.type client --id.attrs "synapsenet.role=reviewer:ecert,synapsenet.actorId=${reviewer}:ecert" --tls.certfiles "$tls" || true
         fabric-ca-client enroll -u "https://${reviewer}:${REVIEWER_SECRET}@${CA}:7054" --tls.certfiles "$tls" -M "/org/users/${reviewer}@${DOMAIN}/msp"
         cp /org/msp/config.yaml "/org/users/${reviewer}@${DOMAIN}/msp/config.yaml"
       done

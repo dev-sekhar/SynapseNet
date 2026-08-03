@@ -11,23 +11,26 @@ from urllib.parse import quote
 
 import httpx
 import qrcode
+from cryptography.exceptions import InvalidTag
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.sessions import SessionMiddleware
 
 from .config import settings
-from .database import database_session
-from .fabric import credential_transactions, fabric_transaction
-from .models import OrganizationApplication, WalletChallenge, WalletIdentity
+from .database import database_session, session_factory
+from .fabric import audit_events, credential_transactions, fabric_transaction
+from .models import EncryptedMetadata, OrganizationApplication, WalletChallenge, WalletIdentity
 from .schemas import (
     WalletChallengeRequest,
     WalletChallengeResponse,
     WalletLinkRequest,
     WalletLinkResponse,
+    ProductionIdentityBindingRequest,
     OrganizationApplicationRequest,
     OrganizationApplicationResponse,
     OrganizationDecisionRequest,
@@ -40,7 +43,7 @@ from .schemas import (
     WalletSession,
     WalletVerifyRequest,
 )
-from .security import new_challenge, normalize_address, recover_address
+from .security import decrypt_metadata, encrypt_metadata, new_challenge, normalize_address, recover_address
 
 app = FastAPI(
     title="SynapseNet Application API",
@@ -410,10 +413,75 @@ async def migration_context(request: Request):
 
 
 async def authenticated_business_actor(request: Request) -> dict:
-    actor = (await migration_context(request)).get("actor")
-    if not actor:
-        raise HTTPException(401, "Sign in to a business profile")
-    return actor
+    address = request.session.get("wallet_address")
+    if address:
+        async with session_factory() as session:
+            identity = await session.get(WalletIdentity, address)
+        if identity and identity.actor_id:
+            users, enterprises = await asyncio.gather(
+                fabric_transaction("skill-manager", "getUsers", [], submit=False),
+                fabric_transaction("skill-manager", "getEnterprises", [], submit=False),
+            )
+            user = next((item for item in users if item.get("userId") == identity.actor_id), None)
+            if user:
+                return {"actorId": identity.actor_id, "role": "user", "displayName": user.get("displayName")}
+            enterprise = next((
+                item for item in enterprises if identity.actor_id in item.get("reviewers", [])
+            ), None)
+            if enterprise:
+                return {
+                    "actorId": identity.actor_id,
+                    "role": "reviewer",
+                    "displayName": identity.actor_id,
+                    "enterpriseId": enterprise["enterpriseId"],
+                }
+    if settings().allow_legacy_business_sessions:
+        actor = (await migration_context(request)).get("actor")
+        if actor:
+            return actor
+    raise HTTPException(401, "Verify a provisioned wallet identity")
+
+
+@app.post("/api/v2/internal/identities", status_code=201)
+async def provision_production_identity(
+    payload: ProductionIdentityBindingRequest,
+    x_operations_token: str | None = Header(default=None),
+    session: AsyncSession = Depends(database_session),
+):
+    require_operations(x_operations_token)
+    address = normalize_address(payload.walletAddress)
+    existing = await session.get(WalletIdentity, address)
+    actor_result = await session.execute(
+        select(WalletIdentity).where(WalletIdentity.actor_id == payload.actorId).limit(1)
+    )
+    actor_identity = actor_result.scalar_one_or_none()
+    if actor_identity and actor_identity.address != address:
+        raise HTTPException(409, "Actor is already bound to another wallet")
+    if existing and existing.actor_id and existing.actor_id != payload.actorId:
+        raise HTTPException(409, "Wallet is already bound to another actor")
+    identity = existing or WalletIdentity(address=address)
+    if existing is None:
+        session.add(identity)
+    identity.actor_id = payload.actorId
+    identity.fabric_msp_id = payload.fabricMspId
+    await session.commit()
+    return {"actorId": identity.actor_id, "walletAddress": address, "fabricMspId": identity.fabric_msp_id}
+
+
+async def actor_fabric_identity(actor: dict) -> dict[str, str]:
+    if actor["role"] == "user":
+        users = await fabric_transaction("skill-manager", "getUsers", [], submit=False)
+        record = next((item for item in users if item.get("userId") == actor["actorId"]), None)
+    else:
+        enterprises = await fabric_transaction("skill-manager", "getEnterprises", [], submit=False)
+        record = next((item for item in enterprises if item.get("enterpriseId") == actor.get("enterpriseId")), None)
+    if not record or not record.get("mspId"):
+        raise HTTPException(403, "Actor does not have an authoritative Fabric MSP binding")
+    return {
+        "mspId": record["mspId"],
+        "enrollmentId": actor["actorId"],
+        "role": actor["role"],
+    }
 
 
 @app.get("/api/v2/credentials/bootstrap")
@@ -440,20 +508,93 @@ async def credential_bootstrap(request: Request):
 
 
 @app.post("/api/v2/credential-requests", status_code=201)
-async def submit_credential(payload: CredentialSubmissionRequest, request: Request):
+async def submit_credential(
+    payload: CredentialSubmissionRequest,
+    request: Request,
+    session: AsyncSession = Depends(database_session),
+):
     actor = await authenticated_business_actor(request)
     if actor["role"] != "user":
         raise HTTPException(403, "User access is required")
     body = payload.model_dump(mode="json")
     body.update({"requestId": f"request-{secrets.token_hex(12)}", "userId": actor["actorId"]})
+    owner_address = request.session.get("wallet_address")
+    if not owner_address and settings().require_wallet_for_credentials:
+        raise HTTPException(401, "Connect and verify a wallet")
+    if not owner_address:
+        owner_address = "0x" + hashlib.sha256(actor["actorId"].encode()).hexdigest()[:40]
+    for evidence in body["evidence"]:
+        metadata_id = f"evidence-metadata-{secrets.token_hex(16)}"
+        private_payload = json.dumps({
+            "fileName": evidence["fileName"],
+            "storageProvider": evidence["storageProvider"],
+            "storageReference": evidence.pop("storageReference", ""),
+        }, separators=(",", ":"), sort_keys=True).encode()
+        ciphertext, nonce = encrypt_metadata(private_payload, metadata_id.encode())
+        session.add(EncryptedMetadata(
+            metadata_id=metadata_id,
+            owner_address=owner_address,
+            owner_actor_id=actor["actorId"],
+            issuer_enterprise_id=payload.enterpriseId,
+            evidence_id=evidence["evidenceId"],
+            ledger_hash=evidence["contentHash"],
+            ciphertext=ciphertext,
+            nonce=nonce,
+            schema_version="evidence-v1",
+            key_version="v1",
+        ))
+        evidence["fileName"] = "encrypted"
+        evidence["storageProvider"] = "synapsenet-private-metadata"
+        evidence["storageReference"] = metadata_id
     try:
+        await session.flush()
+    except IntegrityError as error:
+        await session.rollback()
+        raise HTTPException(409, "Evidence identifiers must be unique") from error
+    try:
+        fabric_identity = await actor_fabric_identity(actor)
         request_id = await fabric_transaction(
             "skill-manager", "submitCredentialRequest",
             [json.dumps(body, separators=(",", ":"), sort_keys=True)], submit=True,
+            identity=fabric_identity,
         )
     except RuntimeError as error:
+        await session.rollback()
         raise HTTPException(400, str(error)) from error
+    await session.commit()
     return {"requestId": request_id}
+
+
+@app.get("/api/v2/evidence/{evidence_id}/metadata")
+async def evidence_metadata(
+    evidence_id: str,
+    request: Request,
+    session: AsyncSession = Depends(database_session),
+):
+    actor = await authenticated_business_actor(request)
+    record = (await session.execute(
+        select(EncryptedMetadata).where(EncryptedMetadata.evidence_id == evidence_id)
+    )).scalar_one_or_none()
+    if not record or record.deleted_at:
+        raise HTTPException(404, "Evidence metadata does not exist")
+    permitted = (
+        actor["role"] == "user" and actor["actorId"] == record.owner_actor_id
+    ) or (
+        actor["role"] == "reviewer" and actor.get("enterpriseId") == record.issuer_enterprise_id
+    )
+    if not permitted:
+        raise HTTPException(403, "Evidence metadata belongs to another credential workflow")
+    try:
+        private_payload = json.loads(decrypt_metadata(
+            record.ciphertext, record.nonce, record.metadata_id.encode()
+        ))
+    except (InvalidTag, ValueError, json.JSONDecodeError) as error:
+        raise HTTPException(500, "Evidence metadata could not be decrypted") from error
+    return {
+        "evidenceId": evidence_id,
+        "contentHash": record.ledger_hash,
+        **private_payload,
+    }
 
 
 @app.post("/api/v2/credential-requests/{request_id}/review")
@@ -464,9 +605,11 @@ async def review_credential(
     if actor["role"] != "reviewer":
         raise HTTPException(403, "Reviewer access is required")
     try:
+        fabric_identity = await actor_fabric_identity(actor)
         credential_id = await fabric_transaction(
             "skill-manager", "reviewCredentialRequest",
             [request_id, actor["actorId"], payload.decision, payload.notes], submit=True,
+            identity=fabric_identity,
         )
     except RuntimeError as error:
         raise HTTPException(400, str(error)) from error
@@ -620,6 +763,24 @@ def require_governance(token: str | None) -> None:
     expected = settings().governance_token
     if not token or not secrets.compare_digest(token, expected):
         raise HTTPException(401, "Governance authorization failed")
+
+
+def require_operations(token: str | None) -> None:
+    expected = settings().operations_token
+    if not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(401, "Operations authorization failed")
+
+
+@app.get("/api/v2/internal/audit/events")
+async def operational_audit_events(
+    limit: int = Query(default=100, ge=1, le=1000),
+    x_operations_token: str | None = Header(default=None),
+):
+    require_operations(x_operations_token)
+    try:
+        return await audit_events(limit)
+    except RuntimeError as error:
+        raise HTTPException(502, str(error)) from error
 
 
 def organization_manifest(application: OrganizationApplication, reviewer_ids: list[str]) -> dict:

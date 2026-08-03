@@ -9,6 +9,7 @@ volumes:
   peer0_data:
   couchdb_data:
   application_data:
+  audit_data:
 
 services:
   orderer.synapsenet.com:
@@ -201,6 +202,9 @@ services:
       SYNAPSENET_GOVERNANCE_TOKEN: ${GOVERNANCE_TOKEN:-local-governance-change-me}
       SYNAPSENET_CREDENTIAL_CHANNEL_NAME: ${CREDENTIAL_CHANNEL_NAME:-credentials}
       SYNAPSENET_TRUST_CHANNEL_NAME: ${TRUST_CHANNEL_NAME:-trust-governance}
+      SYNAPSENET_REQUIRE_WALLET_FOR_CREDENTIALS: ${REQUIRE_WALLET_FOR_CREDENTIALS:-false}
+      SYNAPSENET_OPERATIONS_TOKEN: ${OPERATIONS_TOKEN:-local-operations-change-me}
+      SYNAPSENET_ALLOW_LEGACY_BUSINESS_SESSIONS: ${ALLOW_LEGACY_BUSINESS_SESSIONS:-true}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -226,10 +230,32 @@ services:
       SKILL_CHANNEL_NAME: ${SKILL_CHANNEL_NAME:-synapsenet}
       TRUST_CHANNEL_NAME: ${TRUST_CHANNEL_NAME:-synapsenet}
       FABRIC_MSP_ID: Org1MSP
+      REQUIRE_CALLER_IDENTITY: ${REQUIRE_CALLER_IDENTITY:-false}
+      FABRIC_MSP_DOMAINS_JSON: ${FABRIC_MSP_DOMAINS_JSON:-{"Org1MSP":"org1.synapsenet.com"}}
+      AUDIT_STORE_PATH: /var/lib/synapsenet-audit/events.jsonl
     volumes:
       - ./blockchain/network/crypto-config:/crypto:ro
+      - audit_data:/var/lib/synapsenet-audit
     networks:
       - synapsenet_test
     depends_on:
       peer0.org1.synapsenet.com:
         condition: service_healthy
+
+  operations-worker:
+    profiles: ["web3"]
+    image: curlimages/curl:8.12.1
+    restart: unless-stopped
+    environment:
+      PENALTY_EXECUTOR_TOKEN: ${PENALTY_EXECUTOR_TOKEN:-local-penalty-executor-change-me}
+      RECONCILE_INTERVAL_SECONDS: ${RECONCILE_INTERVAL_SECONDS:-60}
+    command:
+      - sh
+      - -cu
+      - |
+        while true; do
+          curl --fail --silent --show-error -X POST http://application-api:8000/api/v2/internal/penalties/reconcile -H "X-Penalty-Executor-Token: $${PENALTY_EXECUTOR_TOKEN}" || true
+          sleep "$${RECONCILE_INTERVAL_SECONDS}"
+        done
+    networks: [synapsenet_test]
+    depends_on: [application-api]

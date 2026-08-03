@@ -13,5 +13,6 @@ FastAPI, SQLAlchemy 2, Alembic, and SQLite for encrypted off-chain metadata.
 MetaMask cannot directly replace Fabric's default X.509 MSP. The application
 must bind wallet addresses to actors and chaincode must verify canonical signed
 intent. Encryption keys must be supplied through deployment secrets and never
-committed. The existing Express gateway remains a compatibility adapter until
-Fabric orchestration is fully moved.
+committed. Express business sessions remain available only behind the development
+compatibility flag. Production provisions wallet/MSP bindings in FastAPI and signs writes
+with the enrolled actor certificate.

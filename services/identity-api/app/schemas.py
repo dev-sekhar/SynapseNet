@@ -50,6 +50,14 @@ class WalletLinkResponse(BaseModel):
     authoritativeMspId: str
 
 
+class ProductionIdentityBindingRequest(BaseModel):
+    actorId: Identifier
+    walletAddress: EthereumAddress
+    fabricMspId: Annotated[
+        str, StringConstraints(pattern=r"^[A-Za-z][A-Za-z0-9]{2,63}MSP$")
+    ]
+
+
 class ProblemDetail(BaseModel):
     type: str = "about:blank"
     title: str

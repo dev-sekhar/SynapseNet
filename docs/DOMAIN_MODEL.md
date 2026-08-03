@@ -25,8 +25,9 @@ authoritative enterprise. Its structured `details` contain:
 
 At least one evidence item is mandatory. Allowed skill evidence categories are Assessment
 Score, Code Repository, Work Deliverable, Certificate, Performance Review, and Other. The
-file remains outside Fabric; the ledger stores its name, SHA-256 proof, storage provider,
-and optional encrypted storage reference.
+file remains outside Fabric; the ledger stores its SHA-256 proof and an opaque metadata ID.
+Filename, provider, and storage location are AES-256-GCM encrypted off-ledger and released
+only to the holder or assigned issuer.
 
 ## Wallet authorization
 

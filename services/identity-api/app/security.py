@@ -50,3 +50,7 @@ def encryption_key() -> bytes:
 def encrypt_metadata(payload: bytes, associated_data: bytes) -> tuple[bytes, bytes]:
     nonce = secrets.token_bytes(12)
     return AESGCM(encryption_key()).encrypt(nonce, payload, associated_data), nonce
+
+
+def decrypt_metadata(ciphertext: bytes, nonce: bytes, associated_data: bytes) -> bytes:
+    return AESGCM(encryption_key()).decrypt(nonce, ciphertext, associated_data)

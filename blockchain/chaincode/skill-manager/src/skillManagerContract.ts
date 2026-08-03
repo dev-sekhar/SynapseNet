@@ -204,6 +204,7 @@ export class SkillManagerContract extends Contract {
         const user = await this.get<User>(ctx, 'user', userId);
         const enterprise = await this.get<Enterprise>(ctx, 'enterprise', enterpriseId);
         this.assertBoundMsp(ctx, user.mspId, 'credential holder');
+        this.assertCertificateActor(ctx, userId, 'user');
         await this.assertMissing(
             ctx, 'credentialRequest', requestId, `Credential request ${requestId} already exists`
         );
@@ -252,6 +253,7 @@ export class SkillManagerContract extends Contract {
         const reviewer = this.requireId('reviewerId', reviewerId);
         const enterprise = await this.get<Enterprise>(ctx, 'enterprise', request.enterpriseId);
         this.assertBoundMsp(ctx, enterprise.mspId, 'credential issuer');
+        this.assertCertificateActor(ctx, reviewer, 'reviewer');
         if (!enterprise.reviewers.includes(reviewer)) {
             throw new Error(`${reviewer} is not an authorized reviewer for ${enterprise.name}`);
         }
@@ -676,6 +678,20 @@ export class SkillManagerContract extends Contract {
         await ctx.stub.setStateValidationParameter(
             ctx.stub.createCompositeKey(type, [id]), policy.getPolicy()
         );
+    }
+
+    private assertCertificateActor(ctx: Context, actorId: string, requiredRole: string): void {
+        const identity = ctx.clientIdentity as any;
+        const certificateActor = identity.getAttributeValue?.('synapsenet.actorId');
+        const certificateRole = identity.getAttributeValue?.('synapsenet.role');
+        if (certificateActor === null || certificateActor === undefined) {
+            // Development Org1 certificates predate attributed actor enrollment.
+            if (ctx.clientIdentity.getMSPID() === 'Org1MSP') return;
+            throw new Error('Submitting certificate is missing synapsenet.actorId');
+        }
+        if (certificateActor !== actorId || certificateRole !== requiredRole) {
+            throw new Error(`Submitting certificate is not authorized as ${requiredRole} ${actorId}`);
+        }
     }
 
     private async assertMissing(

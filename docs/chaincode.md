@@ -4,7 +4,7 @@ SynapseNet builds two business-domain chaincodes as independent Chaincode-as-a-S
 
 | Chaincode/domain | Smart contracts | Package version | Lifecycle | Service |
 |---|---|---:|---|---|
-| `skill-manager` / credentials | `IdentityContract`, `CredentialContract`, `WalletContract`, `TokenContract`, `SharingContract` | `2.0.0` | version `2.0`, sequence `10` | `skill-manager:9999` |
+| `skill-manager` / credentials | `IdentityContract`, `CredentialContract`, `WalletContract`, `TokenContract`, `SharingContract` | `2.1.0` | version `2.1`, sequence `11` | `skill-manager:9999` |
 | `trust-manager` / trust governance | `TrustPolicyContract`, `ParticipantTrustContract`, `IncidentContract`, `ReputationContract` | `1.6.0` | version `1.6`, sequence `6` | `trust-manager:9998` |
 
 Both packages are TypeScript applications targeting Node.js. They default to the `synapsenet` channel, but channel and endorsement settings are independent: `CREDENTIAL_CHANNEL_NAME`, `TRUST_CHANNEL_NAME`, `CREDENTIAL_ENDORSEMENT_POLICY`, and `TRUST_ENDORSEMENT_POLICY`.
@@ -160,7 +160,10 @@ The skill manager controls the verifiable-credential lifecycle, evidence referen
 
 Supported credential types are `skill`, `role`, `education`, `certificate`, and `other`.
 
-Evidence documents stay off-ledger. The contract stores their filename, document type, storage provider/reference, and SHA-256 content hash. A transaction JSON payload is limited to 32 KiB.
+Evidence documents and sensitive storage locations stay off-ledger. The contract stores the
+document type, opaque encrypted-metadata identifier, and SHA-256 content hash; the application
+encrypts the original filename, provider, and location. A transaction JSON payload is limited
+to 32 KiB.
 
 ### Write Transactions
 

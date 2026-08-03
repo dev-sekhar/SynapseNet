@@ -200,10 +200,31 @@ docker compose ps
 docker compose logs --tail=200
 ```
 
-## Production hardening still required
+## Production security and operations
 
-The local gateway uses one Org1 admin certificate and logical actor IDs. A
-production deployment must enroll users and enterprise reviewers separately,
-bind authorization to certificate attributes or enterprise MSPs, keep storage
-references encrypted off-ledger, authenticate QR recipients, and add durable
-off-chain access/audit services.
+Production must set `REQUIRE_CALLER_IDENTITY=true`,
+`REQUIRE_WALLET_FOR_CREDENTIALS=true`, and `ALLOW_LEGACY_BUSINESS_SESSIONS=false`.
+Enroll each actor with the approved organization CA:
+
+```bash
+FABRIC_CA_BOOTSTRAP_PASSWORD=... ACTOR_ENROLLMENT_SECRET=... \
+yarn consortium:enroll-actor blockchain/consortium/approved/IssuerMSP.json actor-id reviewer
+```
+
+Bind its verified wallet using the protected `POST /api/v2/internal/identities` endpoint.
+Certificates contain the immutable `synapsenet.actorId` and `synapsenet.role` attributes;
+the adapter signs writes with that actor identity and chaincode verifies both attributes.
+
+The `operations-worker` retries penalty reconciliation every 60 seconds by default. Audit
+events persist in the `audit_data` volume. Read them through
+`GET /api/v2/internal/audit/events` with `X-Operations-Token`; adapter `/health` and `/metrics`
+remain internal and require its bearer token.
+
+Create an online SQLite backup and checksum with:
+
+```bash
+SYNAPSENET_BACKUP_DIR=/secure/backup/path yarn operations:backup
+```
+
+Test restoration into an isolated environment before relying on a backup. Preserve the
+encryption key version used by each backup; losing it makes evidence metadata unrecoverable.

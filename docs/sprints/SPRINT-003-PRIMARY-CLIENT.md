@@ -28,8 +28,8 @@
 - Credential CRUD, wallet aggregation, and sharing now use FastAPI and the allow-listed adapter.
 - Final penalty directives now execute and reconcile idempotently through `TokenContract`.
 
-## Remaining limitations
+## Resolved after Sprint 003
 
-- Organization provisioning records applications but does not automatically
-  create production infrastructure until governance approval.
-- Production consortium legal entities have not yet submitted applications.
+- Governed organization approval now renders and provisions production infrastructure.
+- Production privacy, actor certificates, durable audit indexing, and operations automation
+  are delivered in Sprint 006; onboarding actual legal entities remains an operator action.

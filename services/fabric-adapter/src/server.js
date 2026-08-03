@@ -86,11 +86,88 @@ const schema = z.object({
     contract: z.string(),
     transaction: z.string(),
     args: z.array(z.string()).max(12),
-    submit: z.boolean()
+    submit: z.boolean(),
+    identity: z.object({
+        mspId: z.string().regex(/^[A-Za-z][A-Za-z0-9]{2,63}MSP$/),
+        enrollmentId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}$/),
+        role: z.enum(['user', 'reviewer'])
+    }).nullable().optional()
 });
+const identityGateways = new Map();
+const requireCallerIdentity = process.env.REQUIRE_CALLER_IDENTITY === 'true';
+const mspDomains = JSON.parse(process.env.FABRIC_MSP_DOMAINS_JSON || '{"Org1MSP":"org1.synapsenet.com"}');
+
+function callerContract(command) {
+    if (!command.identity) {
+        if (requireCallerIdentity && command.submit) throw new Error('A caller Fabric identity is required');
+        return networks.get(command.contract).getContract(
+            command.contract, smartContracts.get(command.contract)?.get(command.transaction)
+        );
+    }
+    const key = `${command.identity.mspId}:${command.identity.enrollmentId}`;
+    if (!identityGateways.has(key)) {
+        const domain = mspDomains[command.identity.mspId];
+        if (!domain) throw new Error(`No Fabric domain is configured for ${command.identity.mspId}`);
+        const callerMsp = path.join(
+            cryptoRoot, `peerOrganizations/${domain}/users/${command.identity.enrollmentId}@${domain}/msp`
+        );
+        if (!fs.existsSync(callerMsp)) {
+            if (requireCallerIdentity) throw new Error(`Fabric identity ${key} is not enrolled`);
+            return networks.get(command.contract).getContract(
+                command.contract, smartContracts.get(command.contract)?.get(command.transaction)
+            );
+        }
+        const callerCredentials = fs.readFileSync(first(path.join(callerMsp, 'signcerts')));
+        const callerKey = crypto.createPrivateKey(fs.readFileSync(first(path.join(callerMsp, 'keystore'))));
+        const callerGateway = connect({
+            client,
+            identity: { mspId: command.identity.mspId, credentials: callerCredentials },
+            signer: signers.newPrivateKeySigner(callerKey),
+            hash: hash.sha256
+        });
+        identityGateways.set(key, callerGateway);
+    }
+    const callerGateway = identityGateways.get(key);
+    const network = callerGateway.getNetwork(
+        command.contract === 'skill-manager'
+            ? (process.env.SKILL_CHANNEL_NAME || process.env.CHANNEL_NAME || 'synapsenet')
+            : (process.env.TRUST_CHANNEL_NAME || process.env.CHANNEL_NAME || 'synapsenet')
+    );
+    return network.getContract(
+        command.contract, smartContracts.get(command.contract)?.get(command.transaction)
+    );
+}
 const credentialTransactions = new Map();
+const auditEvents = new Map();
+const auditStorePath = process.env.AUDIT_STORE_PATH || '/var/lib/synapsenet-audit/events.jsonl';
 let eventStreamError = null;
 let eventStreamReady = false;
+let blockStreamReady = false;
+let blockStreamError = null;
+
+function persistAudit(item) {
+    if (auditEvents.has(item.auditId)) return;
+    fs.mkdirSync(path.dirname(auditStorePath), { recursive: true });
+    fs.appendFileSync(auditStorePath, `${JSON.stringify(item)}\n`, { mode: 0o600 });
+    auditEvents.set(item.auditId, item);
+}
+
+function loadAuditStore() {
+    if (!fs.existsSync(auditStorePath)) return;
+    for (const line of fs.readFileSync(auditStorePath, 'utf8').split('\n')) {
+        if (!line.trim()) continue;
+        try {
+            const item = JSON.parse(line);
+            if (item.auditId) auditEvents.set(item.auditId, item);
+            if (item.kind === 'credential' && item.transactionHash) {
+                credentialTransactions.set(item.transactionHash, item.projection);
+            }
+        } catch (error) {
+            blockStreamError = `Audit store contains an invalid record: ${error.message}`;
+        }
+    }
+}
+loadAuditStore();
 
 async function credentialRequestReferences() {
     const result = await skillNetwork.getContract(
@@ -144,11 +221,22 @@ async function indexCredentialTransactions() {
                     ? payload
                     : legacyCredentialTransaction(event, payload, references);
                 if (!transaction) continue;
-                credentialTransactions.set(event.transactionId, {
+                const projection = {
                     transactionHash: event.transactionId,
                     blockNumber: event.blockNumber.toString(),
                     validationStatus: 'VALID',
                     ...transaction
+                };
+                credentialTransactions.set(event.transactionId, projection);
+                persistAudit({
+                    auditId: `credential:${event.transactionId}`,
+                    kind: 'credential',
+                    channel: process.env.SKILL_CHANNEL_NAME || process.env.CHANNEL_NAME || 'synapsenet',
+                    transactionHash: event.transactionId,
+                    blockNumber: event.blockNumber.toString(),
+                    validationStatus: 'VALID',
+                    recordedAt: new Date().toISOString(),
+                    projection
                 });
                 eventStreamError = null;
             } catch (error) {
@@ -159,6 +247,41 @@ async function indexCredentialTransactions() {
         eventStreamReady = false;
         eventStreamError = error.message;
         setTimeout(() => void indexCredentialTransactions(), 2_000);
+    } finally {
+        events?.close();
+    }
+}
+
+async function indexValidationEvents() {
+    let events;
+    try {
+        events = await skillNetwork.getFilteredBlockEvents({
+            startBlock: BigInt(process.env.AUDIT_INDEX_START_BLOCK || '0')
+        });
+        blockStreamReady = true;
+        for await (const block of events) {
+            const blockNumber = String(block.number ?? block.blockNumber ?? '0');
+            for (const transaction of block.filteredTransactions || []) {
+                const code = Number(transaction.txValidationCode ?? 0);
+                if (code === 0) continue;
+                const transactionId = transaction.txid || transaction.transactionId;
+                if (!transactionId) continue;
+                persistAudit({
+                    auditId: `invalid:${transactionId}`,
+                    kind: 'invalid-transaction',
+                    channel: process.env.SKILL_CHANNEL_NAME || process.env.CHANNEL_NAME || 'synapsenet',
+                    transactionHash: transactionId,
+                    blockNumber,
+                    validationStatus: String(code),
+                    recordedAt: new Date().toISOString()
+                });
+            }
+            blockStreamError = null;
+        }
+    } catch (error) {
+        blockStreamReady = false;
+        blockStreamError = error.message;
+        setTimeout(() => void indexValidationEvents(), 2_000);
     } finally {
         events?.close();
     }
@@ -184,9 +307,7 @@ app.post('/v1/transactions', async (request, response) => {
         if (!smartContract) {
             return response.status(403).json({ detail: 'Smart contract route is not configured' });
         }
-        const contract = networks.get(command.contract).getContract(
-            command.contract, smartContract
-        );
+        const contract = callerContract(command);
         const result = command.submit
             ? await contract.submitTransaction(command.transaction, ...command.args)
             : await contract.evaluateTransaction(command.transaction, ...command.args);
@@ -203,9 +324,40 @@ app.get('/v1/ledger/credential-transactions', (_request, response) => {
         indexing: { ready: eventStreamReady, error: eventStreamError }
     });
 });
+app.get('/v1/audit/events', (request, response) => {
+    const limit = Math.min(Math.max(Number(request.query.limit || 100), 1), 1000);
+    response.json({
+        items: [...auditEvents.values()].slice(-limit).reverse(),
+        indexing: {
+            chaincodeEvents: { ready: eventStreamReady, error: eventStreamError },
+            blockEvents: { ready: blockStreamReady, error: blockStreamError }
+        }
+    });
+});
+app.get('/health', (_request, response) => {
+    const healthy = eventStreamReady && blockStreamReady && !eventStreamError && !blockStreamError;
+    response.status(healthy ? 200 : 503).json({
+        ok: healthy,
+        credentialEventIndex: eventStreamReady && !eventStreamError,
+        validationEventIndex: blockStreamReady && !blockStreamError,
+        auditEventCount: auditEvents.size
+    });
+});
+app.get('/metrics', (_request, response) => {
+    response.type('text/plain').send([
+        '# HELP synapsenet_audit_events_total Persisted sanitized Fabric audit events',
+        '# TYPE synapsenet_audit_events_total gauge',
+        `synapsenet_audit_events_total ${auditEvents.size}`,
+        `synapsenet_event_stream_ready ${eventStreamReady ? 1 : 0}`,
+        `synapsenet_block_stream_ready ${blockStreamReady ? 1 : 0}`,
+        ''
+    ].join('\n'));
+});
 const server = app.listen(PORT, '0.0.0.0');
 void indexCredentialTransactions();
+void indexValidationEvents();
 function shutdown() {
+    for (const callerGateway of identityGateways.values()) callerGateway.close();
     gateway.close();
     client.close();
     server.close();

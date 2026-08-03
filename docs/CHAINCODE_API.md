@@ -22,7 +22,8 @@ Contract routing:
   submitter MSP.
 - `addEnterpriseReviewer(enterpriseId, reviewerId)` updates the reviewer set.
 - `submitCredentialRequest(payloadJson)` accepts at most 32 KiB; evidence content stays
-  off-ledger and is represented by SHA-256 proofs. Skill requests require proficiency level
+  off-ledger and is represented by SHA-256 proofs. FastAPI replaces the private filename and
+  storage location with an opaque encrypted-metadata identifier before submission. Skill requests require proficiency level
   and practical application, and validate optional experience, tools, last-used month, and
   attestations as defined in `DOMAIN_MODEL.md`.
 - `reviewCredentialRequest(requestId, reviewerId, decision, notes)` checks the issuer MSP

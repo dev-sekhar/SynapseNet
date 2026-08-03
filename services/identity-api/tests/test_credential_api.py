@@ -2,7 +2,7 @@ import os
 
 os.environ.setdefault("SYNAPSENET_FABRIC_ADAPTER_TOKEN", "test-adapter-token")
 os.environ.setdefault("SYNAPSENET_SESSION_SECRET", "test-session-secret")
-os.environ.setdefault("SYNAPSENET_ENCRYPTION_KEY", "test-encryption-key")
+os.environ["SYNAPSENET_ENCRYPTION_KEY"] = "eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHg="
 os.environ.setdefault("SYNAPSENET_PENALTY_EXECUTOR_TOKEN", "test-penalty-token")
 
 from fastapi.testclient import TestClient
@@ -16,11 +16,14 @@ def test_credential_submission_uses_allow_listed_fabric_boundary(monkeypatch):
     async def actor(_request):
         return {"actorId": "user-a", "role": "user"}
 
-    async def fabric(contract, transaction, args, *, submit):
+    async def fabric(contract, transaction, args, *, submit, identity=None):
         calls.append((contract, transaction, args, submit))
         return "request-ledger-1"
 
     monkeypatch.setattr(main, "authenticated_business_actor", actor)
+    async def fabric_identity(_actor):
+        return {"mspId": "Org1MSP", "enrollmentId": "user-a", "role": "user"}
+    monkeypatch.setattr(main, "actor_fabric_identity", fabric_identity)
     monkeypatch.setattr(main, "fabric_transaction", fabric)
     response = TestClient(main.app).post("/api/v2/credential-requests", json={
         "enterpriseId": "issuer-a",
@@ -39,12 +42,16 @@ def test_credential_submission_uses_allow_listed_fabric_boundary(monkeypatch):
     assert response.json() == {"requestId": "request-ledger-1"}
     assert calls[0][0:2] == ("skill-manager", "submitCredentialRequest")
     assert calls[0][3] is True
+    ledger_evidence = __import__("json").loads(calls[0][2][0])["evidence"][0]
+    assert ledger_evidence["fileName"] == "encrypted"
+    assert ledger_evidence["storageProvider"] == "synapsenet-private-metadata"
+    assert ledger_evidence["storageReference"].startswith("evidence-metadata-")
 
 
 def test_penalty_reconciliation_executes_then_acknowledges(monkeypatch):
     transactions = []
 
-    async def fabric(contract, transaction, args, *, submit):
+    async def fabric(contract, transaction, args, *, submit, identity=None):
         transactions.append((contract, transaction, submit))
         if transaction == "getPendingPenaltyDirectives":
             return [{

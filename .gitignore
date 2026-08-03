@@ -8,9 +8,11 @@
 services/api-gateway/data/auth.json
 services/identity-api/data/
 services/identity-api/.venv/
+backups/
 __pycache__/
 *.pyc
 .env.*
+!.env.example
 .editorconfig
 .idea/
 .vscode/

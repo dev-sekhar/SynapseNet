@@ -224,6 +224,16 @@ PHASE6_EVIDENCE_MANIFEST=reports/phase6-release-evidence.json yarn phase6:readin
 The final command validates every artifact digest and refuses a bundle that does not contain
 evidence for Phases 4, 5, load testing, and resilience testing.
 
+### Phases 7–9: security, recovery, and launch
+
+Security CI produces the CycloneDX SBOM and scan reports consumed by `yarn phase7:readiness`.
+Run `yarn phase8:readiness` with a fresh checksummed backup, Fabric snapshot evidence, key-recovery
+evidence, and named disaster-recovery site and owner. Once every phase has real evidence and the
+four independent approvals are recorded, issue the final certificate with `yarn phase9:finalize`.
+
+See [ROADMAP.md](ROADMAP.md), [DISASTER_RECOVERY.md](DISASTER_RECOVERY.md), and the Phase 7–9
+documents for exact inputs. These commands fail closed and do not manufacture production proof.
+
 ## Query the chaincode manually
 
 ```bash

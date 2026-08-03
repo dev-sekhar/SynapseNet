@@ -1,0 +1,61 @@
+name: SynapseNet Security Assurance
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  codeql:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language: [javascript-typescript, python]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+      - uses: github/codeql-action/analyze@v3
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan repository for vulnerabilities
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: fs
+          format: json
+          output: trivy-results.json
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+      - name: Scan repository for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0.17.2
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: synapsenet-sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synapsenet-security-evidence
+          path: |
+            synapsenet-sbom.cdx.json
+            trivy-results.json

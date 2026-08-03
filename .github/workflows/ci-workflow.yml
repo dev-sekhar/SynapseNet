@@ -70,3 +70,6 @@ jobs:
 
       - name: Validate Phase 6 load scenario
         run: yarn phase6:validate-load
+
+      - name: Test final phase gates
+        run: yarn final-phases:test

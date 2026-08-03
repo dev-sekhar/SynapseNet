@@ -286,6 +286,12 @@ routing, a fail-closed operational ownership gate, and an incident runbook. See
 Phase 6 adds read-only capacity thresholds, a guarded single-orderer resilience drill, and a
 SHA-256 release evidence manifest. See `docs/phases/PHASE-006-GO-LIVE-CERTIFICATION.md`.
 
+## Final delivery phases
+
+Phases 7–9 add software-supply-chain assurance, disaster-recovery validation, and a commit-bound
+production launch certificate with four independent approvals. The complete status and remaining
+external launch work are recorded in `docs/ROADMAP.md`.
+
 ## MVP walkthrough
 
 1. Register `user-a` with a password, then sign in.

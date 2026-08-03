@@ -122,8 +122,10 @@ SynapseNet/
 │   ├── ARCHITECTURE.md
 │   ├── CHAINCODE_API.md
 │   ├── DOMAIN_MODEL.md
+│   ├── DISASTER_RECOVERY.md
 │   ├── INCIDENT_RESPONSE.md
 │   ├── PRD.md
+│   ├── ROADMAP.md
 │   ├── ProjectStructure.md
 │   ├── RUNNING.md
 │   ├── SMART_CONTRACT_ENGINEERING.md

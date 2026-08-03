@@ -30,7 +30,7 @@ SynapseNet/
 │       └── README.md
 ├── services/                          # Independently deployable backend services
 │   ├── api-gateway/                   # Business API and direct Fabric gateway
-│   │   ├── public/                    # Legacy static client
+│   │   ├── public/                    # Public wallet-authenticated landing page
 │   │   ├── src/
 │   │   │   ├── auth-store.js
 │   │   │   ├── http-errors.js
@@ -120,6 +120,7 @@ SynapseNet/
 │   ├── phases/
 │   ├── sprints/
 │   ├── ARCHITECTURE.md
+│   ├── AUTHENTICATION.md
 │   ├── CHAINCODE_API.md
 │   ├── DOMAIN_MODEL.md
 │   ├── DISASTER_RECOVERY.md
@@ -164,8 +165,8 @@ The database is intentionally not a top-level directory. It is private to `ident
                   ┌───────────────┴────────────────┐
                   ▼                                ▼
           services/api-gateway           services/identity-api
-          (business login and             (credentials, wallets,
-           registration)                   sharing, trust, penalties)
+          (public landing and             (wallet authentication,
+           migration compatibility)        credentials, sharing, trust)
                   │                         │
                   │                         ▼
                   │              services/fabric-adapter
@@ -184,7 +185,7 @@ The two API services own authentication and response shaping. The Fabric adapter
 ## Placement Rules
 
 - Put browser UI, client state, and browser API wrappers in `apps/web/src`.
-- Put business-session endpoints and legacy API orchestration in `services/api-gateway/src`.
+- Put public landing behavior and migration-only compatibility endpoints in `services/api-gateway`.
 - Put wallet identity, relational persistence, and organization workflows in `services/identity-api/app`.
 - Put identity database migrations in `services/identity-api/migrations/versions`.
 - Put reusable Fabric transport behavior in `services/fabric-adapter`.

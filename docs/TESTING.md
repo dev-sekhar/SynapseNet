@@ -35,3 +35,9 @@ The unified test intentionally does not stop orderers, mutate production credent
 organizations, rotate secrets, or manufacture governance evidence. Controlled resilience,
 disaster-recovery, security-report, and final approval gates require real production inputs and
 remain separate authorized operations.
+
+For a manual authentication check, open `http://localhost:3001`, select **Connect Wallet**, choose
+a provisioned account, and sign the challenge. The dashboard must open without a Login ID or
+password prompt. After logout, the landing page must return, the wallet session must be invalid,
+and the next connection must reopen MetaMask's account permission selector. The live-transactions
+card should recover automatically and refresh at five-second intervals.

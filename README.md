@@ -7,13 +7,13 @@ the evidence, and approved credentials enter the user's portable skill wallet.
 
 Users control disclosure. A wallet owner selects individual credentials and
 creates a recipient-, purpose-, and time-bound QR share. The named recipient
-must sign in before the QR view reveals only those selected credentials.
+must connect its provisioned wallet before the QR view reveals only those selected credentials.
 
 ## Business flow
 
-1. **Onboard participants.** A user registers, and an enterprise registers with
-   an initial reviewer. These events are recorded on the ledger. Each participant
-   then signs in to a role-specific workspace.
+1. **Onboard participants.** A user and enterprise reviewer receive governed actor, wallet, and
+   Fabric identity mappings. These events are recorded on the ledger. Each participant connects
+   the provisioned wallet and signs a short-lived challenge to enter a role-specific workspace.
 2. **Submit a claim.** The user chooses a validating enterprise and submits a
    structured `skill`, `role`, `education`, `certificate`, or `other` claim.
 3. **Attach evidence integrity proofs.** Resumes, certificates, employment
@@ -39,32 +39,21 @@ The local web application supports two account types:
 - **Enterprise reviewer:** sees only requests assigned to their enterprise and
   can approve or reject them.
 
-Passwords are never written to Fabric. The development gateway derives password
-hashes with Node.js `scrypt` and stores them in the ignored local file
-`services/api-gateway/data/auth.json`. Browser sessions use HTTP-only, same-site
-cookies. Set a stable `SESSION_SECRET` environment variable outside local
-development.
+Normal access is wallet-only: MetaMask signs a single-use challenge and FastAPI resolves the
+provisioned actor mapping. Browser sessions use HTTP-only, same-site cookies. A wallet address can
+represent only one SynapseNet actor. See `docs/AUTHENTICATION.md`.
 
-Ledger registrations created before login support was added do not have an
-off-ledger password record. An administrator can issue a one-time activation or
-reset token:
+Legacy password records are never written to Fabric. The compatibility gateway retains `scrypt`
+password and one-time-token endpoints only for controlled migration or administrative recovery:
 
 ```bash
 yarn users:list
 yarn auth:issue-reset user-a
 ```
 
-The token is valid for 30 minutes and can be used once in the application's
-“Activate an existing ledger login or reset a password” form. The same flow
-resets passwords for configured accounts. Share the token through a secure
-channel; never place it on the ledger or in source control.
-
-For local development, the reset form also provides a **Get one-time token**
-button. Enter the login ID, request the token, and the application fills it in
-automatically. This shortcut is disabled when `NODE_ENV=production`. Production
-must deliver reset tokens through a previously verified email address, phone
-number, or external identity provider; it must never return them in an API
-response.
+The token is valid for 30 minutes and can be used once. This compatibility path is not displayed
+on the landing page and must not become an alternative production login. Share recovery tokens
+through a verified secure channel; never place them on the ledger or in source control.
 
 ## Error handling and operational safety
 

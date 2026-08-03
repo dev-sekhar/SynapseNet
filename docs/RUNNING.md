@@ -74,6 +74,11 @@ navigation bar, Roboto typography, color palette, and responsive layout:
 The landing-page **Explore the platform** link opens the project documentation
 in a new browser tab.
 
+The wallet request must complete against port 8000 with credentials enabled. The API permits
+`http://localhost:3001` and `http://127.0.0.1:3001`; use one hostname consistently so the wallet
+session cookie is returned on actor and transaction requests. See
+[AUTHENTICATION.md](AUTHENTICATION.md) for the complete challenge and logout flow.
+
 Finalized SNT penalties are reconciled through an internal, retry-safe endpoint. Set
 `PENALTY_EXECUTOR_TOKEN` to a strong secret and call the endpoint from protected scheduler
 infrastructure:
@@ -86,8 +91,8 @@ curl -X POST http://localhost:8000/api/v2/internal/penalties/reconcile \
 The response reports completed and failed directives separately. Retrying cannot execute
 the same directive twice.
 
-To activate a ledger identity that reports `Login not configured`, or reset an
-existing password, issue a one-time token and enter it in the reset form:
+Legacy password activation is not part of normal login. For controlled migration or recovery of
+an older ledger profile, an operator can still issue a one-time token:
 
 ```bash
 yarn users:list
@@ -98,10 +103,8 @@ Tokens expire after 30 minutes and are invalidated after first use. For stable
 sessions, set `SESSION_SECRET` to a strong environment-specific secret before
 starting the UI.
 
-In local development, users can instead expand the password activation/reset
-form, enter their login ID, and select **Get one-time token**. The generated
-token is filled in automatically. This convenience endpoint is disabled when
-`NODE_ENV=production`.
+The development token endpoint is disabled when `NODE_ENV=production`. Do not expose legacy
+password recovery as an alternative to a provisioned production wallet.
 
 After upgrading an older ledger to wallet-enabled chaincode, initialize wallets
 for all existing users and enterprises:

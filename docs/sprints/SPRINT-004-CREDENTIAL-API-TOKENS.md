@@ -29,5 +29,7 @@ in deployment automation; the endpoint is safe to retry.
 
 ## Remaining boundary
 
-Express still owns password-backed business login and initial identity registration. This
-is an authentication compatibility boundary, not a credential ledger API.
+At Sprint 004, Express still owned password-backed business login and initial registration. The
+final wallet-only flow supersedes that boundary: Express retains migration/recovery compatibility,
+while normal login uses the FastAPI wallet challenge and provisioned actor mapping documented in
+`docs/AUTHENTICATION.md`.

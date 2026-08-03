@@ -51,6 +51,10 @@ compose() {
     fi
 }
 
+compose_is_legacy() {
+    ! docker compose version >/dev/null 2>&1 && command -v docker-compose >/dev/null 2>&1
+}
+
 network_compose() {
     if [[ "${CONSORTIUM_MODE:-false}" == "true" && \
           -f "${NETWORK_CONFIG}/generated/docker-compose.organizations.yaml" ]]; then

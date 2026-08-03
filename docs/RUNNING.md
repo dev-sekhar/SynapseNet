@@ -15,6 +15,10 @@ gateway and browser console.
 On Windows, keep the repository in the WSL filesystem (for example,
 `~/projects/SynapseNet`) for better Docker and Node filesystem performance.
 
+Compose v2 is recommended. When only Compose 1.29 is installed with a newer Docker Engine,
+`network:up` safely recreates the stateless Fabric CLI container to avoid the legacy
+`KeyError: ContainerConfig` bug. Ledger containers and volumes are not removed.
+
 ## First run
 
 From the repository root:

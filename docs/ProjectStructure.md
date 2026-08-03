@@ -129,6 +129,7 @@ SynapseNet/
 │   ├── ProjectStructure.md
 │   ├── RUNNING.md
 │   ├── SMART_CONTRACT_ENGINEERING.md
+│   ├── TESTING.md
 │   ├── WORKING.md
 │   └── chaincode.md
 ├── reports/                           # Checked-in test and sprint summaries

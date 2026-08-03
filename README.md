@@ -292,6 +292,12 @@ Phases 7–9 add software-supply-chain assurance, disaster-recovery validation, 
 production launch certificate with four independent approvals. The complete status and remaining
 external launch work are recorded in `docs/ROADMAP.md`.
 
+## Comprehensive test
+
+Run `yarn test:comprehensive` for one full non-destructive test with a single pass/fail result.
+Use `yarn test:comprehensive:running` when the Fabric network and application are already running.
+See `docs/TESTING.md` for prerequisites and report handling.
+
 ## MVP walkthrough
 
 1. Register `user-a` with a password, then sign in.

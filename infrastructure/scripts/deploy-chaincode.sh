@@ -34,6 +34,15 @@ export CHAINCODE_VERSION
 compose rm -sf skill-manager
 compose up -d --build skill-manager
 
+COMMITTED_DEFINITION="$(cli peer lifecycle chaincode querycommitted \
+    -C "${CREDENTIAL_CHANNEL_NAME}" -n "${CHAINCODE_NAME}" --output json 2>/dev/null || true)"
+if [[ -n "${COMMITTED_DEFINITION}" ]] && \
+   jq -e --arg version "${CHAINCODE_VERSION}" --argjson sequence "${CHAINCODE_SEQUENCE}" \
+      '.version == $version and .sequence == $sequence' <<<"${COMMITTED_DEFINITION}" >/dev/null; then
+    echo "${CHAINCODE_NAME} ${CHAINCODE_VERSION} sequence ${CHAINCODE_SEQUENCE} is already committed; reused the existing definition."
+    exit 0
+fi
+
 cli peer lifecycle chaincode approveformyorg \
     -o orderer.synapsenet.com:7050 --tls \
     --cafile /organizations/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/tls/ca.crt \

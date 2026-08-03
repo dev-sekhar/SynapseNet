@@ -19,5 +19,11 @@ if [[ "${CONSORTIUM_MODE:-false}" == "true" ]]; then
         )
     done
 fi
+# Compose 1.29 cannot inspect newer Docker image metadata while recreating a container and fails
+# with KeyError: ContainerConfig. The CLI contains no ledger state, so removing only that service
+# before recreation is safe and preserves orderer, peer, CouchDB, certificates, and volumes.
+if compose_is_legacy; then
+    compose rm -sf cli >/dev/null 2>&1 || true
+fi
 network_compose up -d "${services[@]}"
 echo "Fabric containers started. Create the configured domain channel(s) next."

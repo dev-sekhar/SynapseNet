@@ -450,7 +450,10 @@ async def authenticated_business_actor(request: Request) -> dict:
 
 @app.get("/api/v2/auth/wallet/actor")
 async def wallet_actor(request: Request):
-    return {"actor": await authenticated_business_actor(request)}
+    try:
+        return {"actor": await authenticated_business_actor(request)}
+    except RuntimeError as error:
+        raise HTTPException(503, "Fabric identity lookup is temporarily unavailable") from error
 
 
 @app.post("/api/v2/internal/identities", status_code=201)

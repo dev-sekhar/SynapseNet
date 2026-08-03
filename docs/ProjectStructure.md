@@ -131,6 +131,7 @@ SynapseNet/
 │   └── chaincode.md
 ├── reports/                           # Checked-in test and sprint summaries
 ├── infrastructure/monitoring/         # Prometheus and Alertmanager configuration
+├── infrastructure/performance/        # Read-only k6 capacity scenarios
 ├── .github/workflows/                 # Continuous integration
 ├── docker-compose.yml                 # Local full-stack orchestration
 ├── docker-compose.monitoring.yml      # Internal production monitoring overlay

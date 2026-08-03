@@ -64,3 +64,9 @@ jobs:
 
       - name: Validate Phase 5 observability
         run: yarn phase5:validate-observability
+
+      - name: Test Phase 6 release evidence
+        run: yarn phase6:test
+
+      - name: Validate Phase 6 load scenario
+        run: yarn phase6:validate-load

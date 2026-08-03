@@ -207,6 +207,23 @@ Prometheus and Alertmanager bind to loopback on ports 9090 and 9093. Do not expo
 to the public internet. Verify delivery with a controlled test alert before declaring the release
 operational. Follow [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md) for triage and recovery.
 
+### Phase 6 go-live certification
+
+Run the read-only capacity test with production-appropriate duration and rate, then conduct the
+guarded single-orderer drill in an approved window. Build and verify the release evidence bundle:
+
+```bash
+PHASE6_DURATION=10m PHASE6_REQUEST_RATE=50 yarn phase6:load-test
+CONFIRM_RESILIENCE_DRILL=orderer2.synapsenet.com yarn phase6:resilience-drill
+yarn phase6:evidence --release-id "$RELEASE_ID" --output reports/phase6-release-evidence.json \
+  reports/phase4-readiness.txt reports/phase5-readiness.txt \
+  reports/phase6-load.json reports/phase6-resilience.txt
+PHASE6_EVIDENCE_MANIFEST=reports/phase6-release-evidence.json yarn phase6:readiness
+```
+
+The final command validates every artifact digest and refuses a bundle that does not contain
+evidence for Phases 4, 5, load testing, and resilience testing.
+
 ## Query the chaincode manually
 
 ```bash

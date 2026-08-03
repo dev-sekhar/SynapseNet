@@ -281,6 +281,11 @@ Phase 5 adds authenticated metrics collection, Raft and event-stream alerts, Ale
 routing, a fail-closed operational ownership gate, and an incident runbook. See
 `docs/phases/PHASE-005-CONTINUOUS-ASSURANCE.md` for the release procedure and external gates.
 
+## Phase 6 go-live certification
+
+Phase 6 adds read-only capacity thresholds, a guarded single-orderer resilience drill, and a
+SHA-256 release evidence manifest. See `docs/phases/PHASE-006-GO-LIVE-CERTIFICATION.md`.
+
 ## MVP walkthrough
 
 1. Register `user-a` with a password, then sign in.

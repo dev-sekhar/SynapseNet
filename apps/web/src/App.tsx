@@ -146,8 +146,21 @@ export function App() {
   async function signOutBusiness() {
     await logoutBusiness();
     setBusinessActor(null);
-    disconnect();
+    await disconnectWallet();
     window.location.assign('/');
+  }
+
+  async function disconnectWallet() {
+    try {
+      await window.ethereum?.request({
+        method: 'wallet_revokePermissions',
+        params: [{ eth_accounts: {} }]
+      });
+    } catch {
+      // Providers without permission revocation still need local state cleared.
+    } finally {
+      disconnect();
+    }
   }
 
   function closeSharedCredentials() {
@@ -278,7 +291,7 @@ export function App() {
               </Typography>
             </Stack> : 'Business sign in'}
           </Button>}
-          <Button sx={{ ml: 2 }} variant={connected ? 'outlined' : 'contained'} onClick={connected ? disconnect : connect} startIcon={<AccountBalanceWalletOutlined />}>
+          <Button sx={{ ml: 2 }} variant={connected ? 'outlined' : 'contained'} onClick={connected ? disconnectWallet : connect} startIcon={<AccountBalanceWalletOutlined />}>
             {connected ? 'Disconnect' : 'Connect MetaMask'}
           </Button>
         </Toolbar>

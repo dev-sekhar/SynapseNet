@@ -28,7 +28,11 @@ async function connectWallet() {
   }
   walletButton.disabled = true;
   try {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    await window.ethereum.request({
+      method: 'wallet_requestPermissions',
+      params: [{ eth_accounts: {} }]
+    });
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
     showWallet(accounts?.[0]);
   } catch (reason) {
     if (reason?.code === 4001) {
@@ -51,9 +55,10 @@ async function session() {
 
 async function initialize() {
   if (window.ethereum) {
-    const accounts = await window.ethereum.request({ method: 'eth_accounts' }).catch(() => []);
-    showWallet(accounts?.[0]);
-    window.ethereum.on?.('accountsChanged', (nextAccounts) => showWallet(nextAccounts?.[0]));
+    showWallet(null);
+    window.ethereum.on?.('accountsChanged', (nextAccounts) => {
+      if (walletAddress) showWallet(nextAccounts?.[0]);
+    });
   }
   const actor = await session();
   if (!actor) return;

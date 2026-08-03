@@ -197,8 +197,9 @@ yarn ui:start
 
 Open <http://localhost:3001>. The root URL serves the public landing page while
 signed out and the React 19 Web3 client after sign-in; there is no separate
-`/app` entry point. Credential, wallet, and sharing operations use FastAPI; Express remains
-only for password-backed business login and initial registration.
+`/app` entry point. The landing-page wallet challenge resolves the provisioned actor directly;
+normal access has no password-backed second login. Credential, wallet, and sharing operations use
+FastAPI. Express retains only compatibility and administrative migration endpoints.
 
 The gateway listens on `0.0.0.0` by default so the Dockerized application API
 can reach it through `host.docker.internal`. Set `HOST=127.0.0.1` when the
@@ -300,14 +301,14 @@ See `docs/TESTING.md` for prerequisites and report handling.
 
 ## MVP walkthrough
 
-1. Register `user-a` with a password, then sign in.
-2. Register `iit-madras` with reviewer `reviewer-iitm` and a separate password.
+1. Connect the provisioned `user-a` MetaMask account and sign its login challenge.
+2. Connect the provisioned `reviewer-iitm` account in a separate browser profile.
 3. As User A, submit a skill or education claim, select IIT Madras, and attach
    a SHA-256 evidence hash.
-4. Sign out, sign in as `reviewer-iitm`, and approve the request.
-5. Sign in as User A and select only the wallet credentials to disclose.
+4. As `reviewer-iitm`, approve the request.
+5. Reconnect User A's wallet and select only the credentials to disclose.
 6. Enter a registered recipient ID, purpose, validity period, and expiry.
-7. The named recipient signs in and opens the QR share to see its restricted
+7. The named recipient connects its provisioned wallet and opens the QR share to see its restricted
    wallet view.
 
 Share identity, time, and revocation authorization are enforced whenever the QR

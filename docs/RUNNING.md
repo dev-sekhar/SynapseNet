@@ -54,10 +54,15 @@ yarn ui:start
 
 Open <http://localhost:3001>. This is the only browser entry point: it displays
 the public landing page while signed out and the application after successful
-sign-in. Register and sign in as either a user or enterprise reviewer. The UI provides role-specific onboarding, bespoke credential forms,
+wallet verification. Select **Connect Wallet**, choose the provisioned MetaMask account, and
+sign the short-lived challenge; no second business login is required. The UI provides role-specific onboarding, bespoke credential forms,
 enterprise validation, user and enterprise credential wallets, dummy SNT token
 balances, and recipient-authenticated selective QR sharing. Stop the UI with
 `Ctrl+C`; this does not stop Fabric.
+
+Signing out clears both application sessions and requests that MetaMask revoke the site's account
+permission. An unlinked wallet cannot enter the dashboard; provision its actor mapping through the
+governed identity workflow rather than sharing a password.
 
 Project and API documentation is served by the application API with one shared
 navigation bar, Roboto typography, color palette, and responsive layout:

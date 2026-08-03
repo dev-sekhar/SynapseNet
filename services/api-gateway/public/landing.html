@@ -10,7 +10,7 @@
 <body>
   <header>
     <a class="brand" href="/">Synapse<span>Net</span></a>
-    <nav><a href="#signin">Sign in</a></nav>
+    <nav><button class="nav-wallet" type="button" data-connect-wallet>Connect Wallet</button></nav>
   </header>
   <main>
     <section class="hero">
@@ -18,7 +18,9 @@
         <p class="eyebrow">User-controlled professional identity</p>
         <h1>Your verified career, <em>under your control.</em></h1>
         <p class="intro">Collect enterprise-verified credentials, authorize actions with your wallet, and disclose only what you choose.</p>
-        <div class="actions"><a class="primary" href="#signin">Enter SynapseNet</a><a href="http://localhost:8000/docs" target="_blank" rel="noopener noreferrer">Explore the platform</a></div>
+        <div class="actions"><button class="primary" type="button" data-connect-wallet>Connect Wallet</button><a href="http://localhost:8000/docs" target="_blank" rel="noopener noreferrer">Explore the platform</a></div>
+        <p id="wallet-status" class="wallet-status" role="status">Connect MetaMask to enter your verified SynapseNet profile.</p>
+        <p id="login-error" role="alert" hidden></p>
       </div>
       <aside>
         <p>Built for trusted professional records</p>
@@ -29,19 +31,6 @@
       <article><span>Verify</span><h2>Evidence-backed</h2><p>Issuers review structured claims and tamper-evident document hashes.</p></article>
       <article><span>Own</span><h2>Wallet authorized</h2><p>Your MetaMask signature authorizes identity and trust actions.</p></article>
       <article><span>Share</span><h2>Purpose limited</h2><p>Disclosures are recipient-bound, time-bound, and revocable.</p></article>
-    </section>
-    <section id="signin" class="access">
-      <div><p class="eyebrow">Secure access</p><h2>Sign in to your credential wallet</h2><p>The dashboard is available only after your SynapseNet business identity is authenticated.</p></div>
-      <form id="login-form">
-        <button id="connect-wallet" class="wallet-button" type="button">Connect MetaMask</button>
-        <p id="wallet-status" class="wallet-status" role="status">Connect your wallet, then sign in to your SynapseNet profile.</p>
-        <div class="form-divider"><span>Business profile</span></div>
-        <label>Login ID<input id="actor-id" autocomplete="username" required></label>
-        <label>Password<input id="password" type="password" autocomplete="current-password" required></label>
-        <p id="login-error" role="alert" hidden></p>
-        <button type="submit">Sign in</button>
-        <a id="open-dashboard" class="dashboard-link" href="/" hidden>Open dashboard</a>
-      </form>
     </section>
   </main>
   <footer><span>SynapseNet credential protocol</span><a href="http://localhost:8000/api/docs">API reference</a></footer>

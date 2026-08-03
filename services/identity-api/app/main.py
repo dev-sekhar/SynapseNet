@@ -246,6 +246,12 @@ async def wallet_session(request: Request):
     return WalletSession(address=address)
 
 
+@app.post("/api/v2/auth/wallet/logout", status_code=204)
+async def wallet_logout(request: Request):
+    request.session.clear()
+
+
+
 @app.post("/api/v2/wallet/link", response_model=WalletLinkResponse)
 async def link_wallet(
     payload: WalletLinkRequest,
@@ -440,6 +446,11 @@ async def authenticated_business_actor(request: Request) -> dict:
         if actor:
             return actor
     raise HTTPException(401, "Verify a provisioned wallet identity")
+
+
+@app.get("/api/v2/auth/wallet/actor")
+async def wallet_actor(request: Request):
+    return {"actor": await authenticated_business_actor(request)}
 
 
 @app.post("/api/v2/internal/identities", status_code=201)

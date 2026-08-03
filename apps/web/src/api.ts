@@ -101,14 +101,32 @@ export type LegacyActor = {
   enterpriseId?: string;
 };
 
+const actorSchema = z.object({
+  actorId: z.string(),
+  role: z.enum(['user', 'reviewer']),
+  displayName: z.string().optional(),
+  enterpriseId: z.string().optional()
+});
+
+export async function authenticatedWallet(): Promise<{ address: string; actor: LegacyActor }> {
+  const [walletResponse, actorResponse] = await Promise.all([
+    api.get('/v2/auth/wallet/session'),
+    api.get('/v2/auth/wallet/actor')
+  ]);
+  return {
+    address: z.object({ address: z.string() }).parse(walletResponse.data).address,
+    actor: z.object({ actor: actorSchema }).parse(actorResponse.data).actor
+  };
+}
+
+export async function logoutWallet(): Promise<void> {
+  await api.post('/v2/auth/wallet/logout');
+}
+
 export async function migrationContext(): Promise<LegacyActor | null> {
   const response = await api.get('/v2/migration/context');
   return z.object({
-    actor: z.object({
-      actorId: z.string(),
-      role: z.enum(['user', 'reviewer']),
-      enterpriseId: z.string().optional()
-    }).nullable()
+    actor: actorSchema.nullable()
   }).parse(response.data).actor;
 }
 

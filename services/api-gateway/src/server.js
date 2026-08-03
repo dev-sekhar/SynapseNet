@@ -301,7 +301,7 @@ app.use(express.static(LANDING_ROOT, { index: false }));
 app.use(express.static(WEB3_DIST, { index: false }));
 
 app.get('/', (request, response) => {
-    const page = request.session.actor
+    const page = request.session.actor || request.query.wallet === '1'
         ? path.join(WEB3_DIST, 'index.html')
         : path.join(LANDING_ROOT, 'landing.html');
     response.sendFile(page);

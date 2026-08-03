@@ -32,7 +32,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import {
-  businessSession, getWallet, LegacyActor, linkWallet, logoutBusiness, migrationContext,
+  authenticatedWallet, getWallet, LegacyActor, linkWallet, logoutBusiness, logoutWallet,
   verifyWallet, walletChallenge
 } from './api';
 import { BusinessAction, BusinessActions } from './BusinessActions';
@@ -92,8 +92,14 @@ export function App() {
   }
 
   useEffect(() => {
-    void businessSession().then(setBusinessActor).catch(() => setBusinessActor(null));
-  }, []);
+    void authenticatedWallet().then(({ address: verifiedAddress, actor }) => {
+      setWallet(verifiedAddress);
+      setBusinessActor(actor);
+    }).catch(() => {
+      setBusinessActor(null);
+      disconnect();
+    });
+  }, [disconnect, setWallet]);
 
   useEffect(() => {
     const provider = window.ethereum;
@@ -144,7 +150,7 @@ export function App() {
   }
 
   async function signOutBusiness() {
-    await logoutBusiness();
+    await Promise.allSettled([logoutBusiness(), logoutWallet()]);
     setBusinessActor(null);
     await disconnectWallet();
     window.location.assign('/');
@@ -222,28 +228,10 @@ export function App() {
       await verifyWallet(selected, signature);
       trace.backendVerificationCompleted = true;
       setWallet(selected);
-      stage = 'migration context lookup';
-      const actor = await migrationContext();
-      trace.migrationActor = actor?.actorId ?? null;
-      if (actor) {
-        stage = 'ledger identity-link signature';
-        try {
-          await linkBusinessIdentity(actor, selected);
-        } catch (reason) {
-          const detail = errorDetail(reason);
-          trace.failedStage = stage;
-          trace.backendDetail = detail;
-          await logoutBusiness().catch(() => undefined);
-          setBusinessActor(null);
-          setDiagnostics(JSON.stringify(trace, null, 2));
-          setError(
-            `Wallet verified, but ${actor.actorId} could not be linked: ${detail}. ` +
-            'The old profile session was cleared. Select Business sign in to choose the correct profile.'
-          );
-          return;
-        }
-      }
-      setBusinessActor(actor);
+      stage = 'wallet actor lookup';
+      const authenticated = await authenticatedWallet();
+      trace.walletActor = authenticated.actor.actorId;
+      setBusinessActor(authenticated.actor);
     } catch (reason) {
       const walletError = reason as { code?: number; message?: string; data?: unknown };
       const detail = errorDetail(reason);
@@ -280,17 +268,16 @@ export function App() {
             <Avatar className="brand-mark"><HubRounded /></Avatar>
             <Box><Typography fontWeight={850}>SynapseNet</Typography><Typography variant="caption" color="text.secondary">Credential protocol</Typography></Box>
           </Stack>
-          {connected && <Button sx={{ ml: 1, textTransform: 'none' }} size="small" variant="text"
-            onClick={() => setBusinessAction('identity')}>
-            {businessActor ? <Stack alignItems="flex-start" spacing={0}>
+          {connected && businessActor && <Box sx={{ ml: 1 }}>
+            <Stack alignItems="flex-start" spacing={0}>
               <Typography variant="body2" fontWeight={800} lineHeight={1.2}>
                 {businessActor.displayName || businessActor.actorId}
               </Typography>
               <Typography variant="caption" color="success.main" lineHeight={1.2}>
                 Wallet verified · {address ? shortAddress(address) : ''}
               </Typography>
-            </Stack> : 'Business sign in'}
-          </Button>}
+            </Stack>
+          </Box>}
           <Button sx={{ ml: 2 }} variant={connected ? 'outlined' : 'contained'} onClick={connected ? disconnectWallet : connect} startIcon={<AccountBalanceWalletOutlined />}>
             {connected ? 'Disconnect' : 'Connect MetaMask'}
           </Button>
@@ -310,10 +297,6 @@ export function App() {
         {businessActor && !connected && <Alert severity="info" sx={{ mb: 3 }}
           action={<Button color="inherit" size="small" onClick={() => void signOutBusiness()}>Cancel</Button>}>
           Signed in as {businessActor.displayName || businessActor.actorId}. Connect MetaMask to continue, or cancel to return to the landing page.
-        </Alert>}
-        {connected && !businessActor && <Alert severity="warning" sx={{ mb: 3 }}
-          action={<Button color="inherit" size="small" onClick={() => setBusinessAction('identity')}>Sign in</Button>}>
-          Wallet verified. Sign in to or create a professional business profile before using credentials and private shares.
         </Alert>}
         {walletQuery.isError && businessActor && <Alert severity="error" sx={{ mb: 3 }}>
           Your business session could not load its wallet. Sign in again if the session expired.

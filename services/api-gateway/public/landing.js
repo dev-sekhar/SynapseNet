@@ -1,7 +1,47 @@
 const form = document.querySelector('#login-form');
 const error = document.querySelector('#login-error');
 const dashboardLink = document.querySelector('#open-dashboard');
+const walletButton = document.querySelector('#connect-wallet');
+const walletStatus = document.querySelector('#wallet-status');
 const destination = `/${window.location.search}`;
+let walletAddress = null;
+
+function shortAddress(address) {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+function showWallet(address) {
+  walletAddress = address || null;
+  walletButton.textContent = walletAddress ? 'Change wallet' : 'Connect MetaMask';
+  walletStatus.textContent = walletAddress
+    ? `Wallet connected: ${shortAddress(walletAddress)}`
+    : 'Connect your wallet, then sign in to your SynapseNet profile.';
+  walletStatus.classList.toggle('connected', Boolean(walletAddress));
+}
+
+async function connectWallet() {
+  error.hidden = true;
+  if (!window.ethereum) {
+    error.textContent = 'MetaMask was not detected. Install or enable MetaMask and try again.';
+    error.hidden = false;
+    return;
+  }
+  walletButton.disabled = true;
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    showWallet(accounts?.[0]);
+  } catch (reason) {
+    if (reason?.code === 4001) {
+      showWallet(null);
+      walletStatus.textContent = 'Wallet connection cancelled. You can try again when ready.';
+    } else {
+      error.textContent = reason?.message || 'MetaMask connection failed.';
+      error.hidden = false;
+    }
+  } finally {
+    walletButton.disabled = false;
+  }
+}
 
 async function session() {
   const response = await fetch('/api/session', { credentials: 'same-origin' });
@@ -10,6 +50,11 @@ async function session() {
 }
 
 async function initialize() {
+  if (window.ethereum) {
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' }).catch(() => []);
+    showWallet(accounts?.[0]);
+    window.ethereum.on?.('accountsChanged', (nextAccounts) => showWallet(nextAccounts?.[0]));
+  }
   const actor = await session();
   if (!actor) return;
   form.querySelectorAll('label, button').forEach((element) => { element.hidden = true; });
@@ -17,6 +62,8 @@ async function initialize() {
   dashboardLink.href = destination;
   dashboardLink.textContent = `Continue as ${actor.displayName || actor.actorId}`;
 }
+
+walletButton.addEventListener('click', connectWallet);
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();

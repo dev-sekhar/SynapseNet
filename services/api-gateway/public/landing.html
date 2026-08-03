@@ -33,6 +33,9 @@
     <section id="signin" class="access">
       <div><p class="eyebrow">Secure access</p><h2>Sign in to your credential wallet</h2><p>The dashboard is available only after your SynapseNet business identity is authenticated.</p></div>
       <form id="login-form">
+        <button id="connect-wallet" class="wallet-button" type="button">Connect MetaMask</button>
+        <p id="wallet-status" class="wallet-status" role="status">Connect your wallet, then sign in to your SynapseNet profile.</p>
+        <div class="form-divider"><span>Business profile</span></div>
         <label>Login ID<input id="actor-id" autocomplete="username" required></label>
         <label>Password<input id="password" type="password" autocomplete="current-password" required></label>
         <p id="login-error" role="alert" hidden></p>

@@ -1,0 +1,30 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: synapsenet-fabric-adapter
+    authorization:
+      credentials_file: /run/secrets/fabric_adapter_token
+    static_configs:
+      - targets: ["fabric-adapter:3010"]
+    metrics_path: /metrics
+
+  - job_name: synapsenet-orderer
+    static_configs:
+      - targets:
+          - orderer.synapsenet.com:9443
+          - orderer2.synapsenet.com:9443
+          - orderer3.synapsenet.com:9443
+
+  - job_name: synapsenet-peer
+    static_configs:
+      - targets: ["peer0.org1.synapsenet.com:9444"]

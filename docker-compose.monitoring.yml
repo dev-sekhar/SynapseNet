@@ -1,0 +1,29 @@
+services:
+  prometheus:
+    image: prom/prometheus:${PROMETHEUS_VERSION:-v3.5.0}
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=${METRICS_RETENTION:-30d}
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/monitoring/alerts.yml:/etc/prometheus/rules/synapsenet.yml:ro
+      - ${FABRIC_ADAPTER_TOKEN_FILE:?Set FABRIC_ADAPTER_TOKEN_FILE}:/run/secrets/fabric_adapter_token:ro
+      - prometheus_data:/prometheus
+    ports: ["127.0.0.1:9090:9090"]
+    networks: [synapsenet_test]
+
+  alertmanager:
+    image: prom/alertmanager:${ALERTMANAGER_VERSION:-v0.28.1}
+    restart: unless-stopped
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    volumes:
+      - ./infrastructure/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${ALERT_WEBHOOK_URL_FILE:?Set ALERT_WEBHOOK_URL_FILE}:/run/secrets/alert_webhook_url:ro
+      - alertmanager_data:/alertmanager
+    ports: ["127.0.0.1:9093:9093"]
+    networks: [synapsenet_test]
+
+volumes:
+  prometheus_data:
+  alertmanager_data:

@@ -275,6 +275,12 @@ approvals, channel-isolation verification, fail-closed production preflight, and
 non-destructive backup restore drill. Start with `yarn phase4:preflight`; the full governed
 release sequence is documented in `docs/phases/PHASE-004-PRODUCTION-ROLLOUT.md`.
 
+## Phase 5 continuous assurance
+
+Phase 5 adds authenticated metrics collection, Raft and event-stream alerts, Alertmanager
+routing, a fail-closed operational ownership gate, and an incident runbook. See
+`docs/phases/PHASE-005-CONTINUOUS-ASSURANCE.md` for the release procedure and external gates.
+
 ## MVP walkthrough
 
 1. Register `user-a` with a password, then sign in.

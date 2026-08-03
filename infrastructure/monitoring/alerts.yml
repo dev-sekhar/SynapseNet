@@ -1,0 +1,38 @@
+groups:
+  - name: synapsenet-availability
+    rules:
+      - alert: SynapseNetTargetDown
+        expr: up{job=~"synapsenet-.+"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SynapseNet monitoring target is unavailable"
+          description: "{{ $labels.job }} target {{ $labels.instance }} has been unavailable for five minutes."
+
+      - alert: CredentialEventStreamUnavailable
+        expr: synapsenet_event_stream_ready == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Credential event projection is not current"
+          description: "The credential event stream has not been ready for two minutes."
+
+      - alert: ValidationEventStreamUnavailable
+        expr: synapsenet_block_stream_ready == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Validation audit stream is not current"
+          description: "The Fabric validation stream has not been ready for two minutes."
+
+      - alert: RaftQuorumAtRisk
+        expr: count(up{job="synapsenet-orderer"} == 1) < 2
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Raft ordering quorum is unavailable"
+          description: "Fewer than two of the three ordering nodes are reachable."

@@ -106,9 +106,12 @@ SynapseNet/
 │       ├── network-reset.sh
 │       ├── network-up.sh
 │       ├── production-readiness.sh
+│       ├── phase5-monitoring.sh
+│       ├── phase5-readiness.sh
 │       ├── join-consortium-peers.sh
 │       ├── render-consortium-config.py
 │       ├── restore-drill.sh
+│       ├── validate-phase5-observability.sh
 │       ├── validate-channel-isolation.sh
 │       ├── validate-generated-topology.sh
 │       └── smoke-test.sh
@@ -119,6 +122,7 @@ SynapseNet/
 │   ├── ARCHITECTURE.md
 │   ├── CHAINCODE_API.md
 │   ├── DOMAIN_MODEL.md
+│   ├── INCIDENT_RESPONSE.md
 │   ├── PRD.md
 │   ├── ProjectStructure.md
 │   ├── RUNNING.md
@@ -126,8 +130,10 @@ SynapseNet/
 │   ├── WORKING.md
 │   └── chaincode.md
 ├── reports/                           # Checked-in test and sprint summaries
+├── infrastructure/monitoring/         # Prometheus and Alertmanager configuration
 ├── .github/workflows/                 # Continuous integration
 ├── docker-compose.yml                 # Local full-stack orchestration
+├── docker-compose.monitoring.yml      # Internal production monitoring overlay
 ├── package.json                       # JavaScript workspace commands
 └── yarn.lock
 ```

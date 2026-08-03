@@ -188,6 +188,25 @@ yarn phase4:readiness
 does not commit until each organization authorized for that domain has installed and approved
 the exact package definition. `phase4:readiness` is deliberately fail-closed.
 
+### Phase 5 continuous assurance
+
+After Phase 4 passes, supply monitoring secrets as files and assign the release owner:
+
+```bash
+export FABRIC_ADAPTER_TOKEN_FILE=/run/secrets/synapsenet-fabric-adapter-token
+export ALERT_WEBHOOK_URL_FILE=/run/secrets/synapsenet-alert-webhook-url
+export RELEASE_ID=release-2026-08-03.1
+export INCIDENT_COMMANDER=primary-on-call
+export INCIDENT_CONTACT=operations-escalation-channel
+yarn phase5:validate-observability
+yarn phase5:readiness
+yarn phase5:monitoring:up
+```
+
+Prometheus and Alertmanager bind to loopback on ports 9090 and 9093. Do not expose them directly
+to the public internet. Verify delivery with a controlled test alert before declaring the release
+operational. Follow [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md) for triage and recovery.
+
 ## Query the chaincode manually
 
 ```bash

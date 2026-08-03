@@ -61,3 +61,6 @@ jobs:
 
       - name: Validate Phase 4 Fabric artifacts
         run: yarn phase4:validate-topology
+
+      - name: Validate Phase 5 observability
+        run: yarn phase5:validate-observability

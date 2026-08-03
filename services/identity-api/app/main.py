@@ -358,9 +358,7 @@ async def list_transactions(
 ):
     if not request.session.get("wallet_address"):
         raise HTTPException(401, "Connect and verify a wallet")
-    actor = (await migration_context(request)).get("actor")
-    if not actor:
-        raise HTTPException(401, "Sign in to a business profile")
+    actor = await authenticated_business_actor(request)
     try:
         projection = await credential_transactions()
     except RuntimeError as error:

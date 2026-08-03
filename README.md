@@ -268,6 +268,13 @@ Run the chaincode tests with:
 yarn chaincode:test
 ```
 
+## Phase 4 production rollout
+
+Phase 4 provides a three-consenter Raft topology, governed multi-organization lifecycle
+approvals, channel-isolation verification, fail-closed production preflight, and a
+non-destructive backup restore drill. Start with `yarn phase4:preflight`; the full governed
+release sequence is documented in `docs/phases/PHASE-004-PRODUCTION-ROLLOUT.md`.
+
 ## MVP walkthrough
 
 1. Register `user-a` with a password, then sign in.

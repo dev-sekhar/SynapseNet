@@ -93,6 +93,7 @@ SynapseNet/
 │       ├── create-domain-channels.sh
 │       ├── deploy-chaincode.sh
 │       ├── deploy-trust-chaincode.sh
+│       ├── deploy-consortium-chaincodes.sh
 │       ├── backup-application-data.sh
 │       ├── enroll-actor-identity.sh
 │       ├── enroll-consortium-organization.sh
@@ -104,11 +105,16 @@ SynapseNet/
 │       ├── network-down.sh
 │       ├── network-reset.sh
 │       ├── network-up.sh
+│       ├── production-readiness.sh
 │       ├── join-consortium-peers.sh
 │       ├── render-consortium-config.py
+│       ├── restore-drill.sh
+│       ├── validate-channel-isolation.sh
+│       ├── validate-generated-topology.sh
 │       └── smoke-test.sh
 ├── docs/                              # Product and engineering documentation
 │   ├── adr/
+│   ├── phases/
 │   ├── sprints/
 │   ├── ARCHITECTURE.md
 │   ├── CHAINCODE_API.md

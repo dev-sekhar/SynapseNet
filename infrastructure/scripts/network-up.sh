@@ -9,6 +9,7 @@ fi
 
 services=(orderer.synapsenet.com couchdb0.org1.synapsenet.com peer0.org1.synapsenet.com cli)
 if [[ "${CONSORTIUM_MODE:-false}" == "true" ]]; then
+    services+=(orderer2.synapsenet.com orderer3.synapsenet.com)
     shopt -s nullglob
     for manifest in "${PROJECT_ROOT}"/blockchain/consortium/approved/*.json; do
         services+=(

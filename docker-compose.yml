@@ -189,13 +189,13 @@ services:
       context: ./services/identity-api
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     environment:
-      SYNAPSENET_SESSION_SECRET: ${SYNAPSENET_SESSION_SECRET:-local-development-change-me-32}
+      SYNAPSENET_SESSION_SECRET: ${SESSION_SECRET:-${SYNAPSENET_SESSION_SECRET:-local-development-change-me-32}}
       SYNAPSENET_ENCRYPTION_KEY: ${SYNAPSENET_ENCRYPTION_KEY:-bG9jYWwtZGV2ZWxvcG1lbnQta2V5LTMyLWJ5dGVzISE=}
       SYNAPSENET_DATABASE_URL: sqlite+aiosqlite:///./data/synapsenet.db
       SYNAPSENET_LEDGER_GATEWAY_URL: http://host.docker.internal:3001
       SYNAPSENET_FABRIC_ADAPTER_URL: http://fabric-adapter:3010
       SYNAPSENET_FABRIC_ADAPTER_TOKEN: ${FABRIC_ADAPTER_TOKEN:-local-fabric-adapter-token-change-me}
-      SYNAPSENET_COOKIE_SECURE: "false"
+      SYNAPSENET_COOKIE_SECURE: ${SYNAPSENET_COOKIE_SECURE:-false}
       SYNAPSENET_DOCS_DIR: /project-docs
       SYNAPSENET_PUBLIC_APP_URL: ${SYNAPSENET_PUBLIC_APP_URL:-http://localhost:3001}
       SYNAPSENET_PENALTY_EXECUTOR_TOKEN: ${PENALTY_EXECUTOR_TOKEN:-local-penalty-executor-change-me}
@@ -227,7 +227,7 @@ services:
       FABRIC_CRYPTO_ROOT: /crypto
       PEER_ENDPOINT: peer0.org1.synapsenet.com:7051
       CHANNEL_NAME: synapsenet
-      SKILL_CHANNEL_NAME: ${SKILL_CHANNEL_NAME:-synapsenet}
+      SKILL_CHANNEL_NAME: ${CREDENTIAL_CHANNEL_NAME:-${SKILL_CHANNEL_NAME:-synapsenet}}
       TRUST_CHANNEL_NAME: ${TRUST_CHANNEL_NAME:-synapsenet}
       FABRIC_MSP_ID: Org1MSP
       REQUIRE_CALLER_IDENTITY: ${REQUIRE_CALLER_IDENTITY:-false}

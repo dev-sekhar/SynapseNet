@@ -3,11 +3,17 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 MANIFEST="${1:?Usage: $0 <approved-manifest.json>}"
-CA_PASSWORD="${FABRIC_CA_BOOTSTRAP_PASSWORD:?Set FABRIC_CA_BOOTSTRAP_PASSWORD}"
-PEER_SECRET="${PEER_ENROLLMENT_SECRET:?Set PEER_ENROLLMENT_SECRET}"
-REVIEWER_SECRET="${REVIEWER_ENROLLMENT_SECRET:?Set REVIEWER_ENROLLMENT_SECRET}"
 DOMAIN="$(jq -r '.fabric.domain' "${MANIFEST}")"
 MSP_ID="$(jq -r '.fabric.mspId' "${MANIFEST}")"
+CA_SECRET_NAME="CA_BOOTSTRAP_$(tr '[:lower:]-.' '[:upper:]__' <<<"${MSP_ID}")"
+PEER_SECRET_NAME="PEER_ENROLLMENT_$(tr '[:lower:]-.' '[:upper:]__' <<<"${MSP_ID}")"
+REVIEWER_SECRET_NAME="REVIEWER_ENROLLMENT_$(tr '[:lower:]-.' '[:upper:]__' <<<"${MSP_ID}")"
+CA_PASSWORD="${!CA_SECRET_NAME:-${FABRIC_CA_BOOTSTRAP_PASSWORD:-}}"
+PEER_SECRET="${!PEER_SECRET_NAME:-${PEER_ENROLLMENT_SECRET:-}}"
+REVIEWER_SECRET="${!REVIEWER_SECRET_NAME:-${REVIEWER_ENROLLMENT_SECRET:-}}"
+[[ -n "${CA_PASSWORD}" ]] || { echo "Set ${CA_SECRET_NAME} in the deployment secret environment" >&2; exit 2; }
+[[ -n "${PEER_SECRET}" ]] || { echo "Set ${PEER_SECRET_NAME} in the deployment secret environment" >&2; exit 2; }
+[[ -n "${REVIEWER_SECRET}" ]] || { echo "Set ${REVIEWER_SECRET_NAME} in the deployment secret environment" >&2; exit 2; }
 PEER="$(jq -r '.fabric.peer' "${MANIFEST}")"
 CA="$(jq -r '.fabric.ca' "${MANIFEST}")"
 REVIEWERS="$(jq -r '.fabric.enrollment.reviewerIds | join(",")' "${MANIFEST}")"

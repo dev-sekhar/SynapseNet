@@ -152,9 +152,9 @@ Provision the approved topology with secrets supplied by the deployment secret s
 
 ```bash
 export CONSORTIUM_MODE=true
-export FABRIC_CA_BOOTSTRAP_PASSWORD='replace-with-secret'
-export PEER_ENROLLMENT_SECRET='replace-with-secret'
-export REVIEWER_ENROLLMENT_SECRET='replace-with-secret'
+export CA_BOOTSTRAP_ISSUERMSP='replace-with-secret'
+export PEER_ENROLLMENT_ISSUERMSP='replace-with-secret'
+export REVIEWER_ENROLLMENT_ISSUERMSP='replace-with-secret'
 yarn consortium:governance render
 yarn network:generate
 yarn network:up
@@ -167,6 +167,26 @@ policies. Every approved issuer is a credential-channel member. Only manifests w
 `trustGovernor: true` join the trust channel. Each member must install the relevant CCaaS
 package and approve the exact definition; commit only after Fabric reports the required
 approvals. Never use the example manifest or shared development secrets in production.
+
+### Phase 4 production release gate
+
+With real approved manifests and secret-manager values loaded, execute:
+
+```bash
+yarn phase4:preflight
+yarn network:generate
+yarn network:up
+yarn network:create-domain-channels
+yarn network:join-consortium-peers
+yarn phase4:deploy-chaincodes
+yarn phase4:validate-isolation
+export RESTORE_DRILL_BACKUP=/secure/backup/path/synapsenet-TIMESTAMP.db
+yarn phase4:readiness
+```
+
+`network:generate` creates three Raft consenters in consortium mode. The lifecycle command
+does not commit until each organization authorized for that domain has installed and approved
+the exact package definition. `phase4:readiness` is deliberately fail-closed.
 
 ## Query the chaincode manually
 
@@ -207,7 +227,7 @@ Production must set `REQUIRE_CALLER_IDENTITY=true`,
 Enroll each actor with the approved organization CA:
 
 ```bash
-FABRIC_CA_BOOTSTRAP_PASSWORD=... ACTOR_ENROLLMENT_SECRET=... \
+CA_BOOTSTRAP_ISSUERMSP=... ACTOR_ENROLLMENT_SECRET=... \
 yarn consortium:enroll-actor blockchain/consortium/approved/IssuerMSP.json actor-id reviewer
 ```
 
@@ -228,3 +248,7 @@ SYNAPSENET_BACKUP_DIR=/secure/backup/path yarn operations:backup
 
 Test restoration into an isolated environment before relying on a backup. Preserve the
 encryption key version used by each backup; losing it makes evidence metadata unrecoverable.
+
+```bash
+yarn operations:restore-drill /secure/backup/path/synapsenet-TIMESTAMP.db
+```

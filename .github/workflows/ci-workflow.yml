@@ -44,10 +44,20 @@ jobs:
         run: pip install -r services/identity-api/requirements.txt
 
       - name: Test identity API
-        run: pytest -q services/identity-api/tests
+        working-directory: services/identity-api
+        run: |
+          mkdir -p data
+          alembic upgrade head
+          pytest -q tests
 
       - name: Validate Docker Compose
         run: docker compose config --quiet
 
       - name: Validate operational scripts
         run: bash -n infrastructure/scripts/*.sh
+
+      - name: Test Phase 4 topology renderer
+        run: yarn phase4:test
+
+      - name: Validate Phase 4 Fabric artifacts
+        run: yarn phase4:validate-topology

@@ -14,6 +14,10 @@ flowchart LR
   P2 --> C2[(CouchDB)]
 ```
 
+Production expands the ordering node in this logical diagram into three consenters:
+`orderer`, `orderer2`, and `orderer3`. They share the governed Orderer MSP but use distinct
+TLS identities and ledger volumes, tolerating one orderer crash while maintaining quorum.
+
 The browser owns the Ethereum signing key. Fabric continues to use consortium
 X.509 identities. Chaincode must validate the wallet-signed canonical intent
 and the submitter's MSP/attributes before changing state.

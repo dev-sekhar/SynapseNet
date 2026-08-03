@@ -54,7 +54,7 @@ def render_crypto(values: list[dict]) -> str:
   - Name: Orderer
     Domain: synapsenet.com
     EnableNodeOUs: true
-    Specs: [{Hostname: orderer}]
+    Specs: [{Hostname: orderer}, {Hostname: orderer2}, {Hostname: orderer3}]
 PeerOrgs:
 """ + peer_orgs
 
@@ -97,13 +97,21 @@ Application: &ApplicationDefaults
   Capabilities: *ApplicationCapabilities
 Orderer: &OrdererDefaults
   OrdererType: etcdraft
-  Addresses: [orderer.synapsenet.com:7050]
+  Addresses: [orderer.synapsenet.com:7050, orderer2.synapsenet.com:7050, orderer3.synapsenet.com:7050]
   EtcdRaft:
     Consenters:
       - Host: orderer.synapsenet.com
         Port: 7050
         ClientTLSCert: ../crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/tls/server.crt
         ServerTLSCert: ../crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer.synapsenet.com/tls/server.crt
+      - Host: orderer2.synapsenet.com
+        Port: 7050
+        ClientTLSCert: ../crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer2.synapsenet.com/tls/server.crt
+        ServerTLSCert: ../crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer2.synapsenet.com/tls/server.crt
+      - Host: orderer3.synapsenet.com
+        Port: 7050
+        ClientTLSCert: ../crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer3.synapsenet.com/tls/server.crt
+        ServerTLSCert: ../crypto-config/ordererOrganizations/synapsenet.com/orderers/orderer3.synapsenet.com/tls/server.crt
   BatchTimeout: 2s
   BatchSize: {{MaxMessageCount: 20, AbsoluteMaxBytes: 10 MB, PreferredMaxBytes: 256 KB}}
   Organizations: []
@@ -149,12 +157,45 @@ Profiles:
 def render_compose(values: list[dict]) -> str:
     services = []
     volumes = []
+    for orderer in ("orderer2", "orderer3"):
+        host = f"{orderer}.synapsenet.com"
+        services.append(f"""  {host}:
+    container_name: {host}
+    image: hyperledger/fabric-orderer:${{FABRIC_VERSION:-2.5.15}}
+    command: orderer
+    environment:
+      FABRIC_CFG_PATH: /etc/hyperledger/fabric
+      FABRIC_LOGGING_SPEC: INFO
+      ORDERER_GENERAL_LISTENADDRESS: 0.0.0.0
+      ORDERER_GENERAL_LISTENPORT: 7050
+      ORDERER_GENERAL_LOCALMSPID: OrdererMSP
+      ORDERER_GENERAL_LOCALMSPDIR: /etc/hyperledger/fabric/msp
+      ORDERER_GENERAL_BOOTSTRAPMETHOD: file
+      ORDERER_GENERAL_BOOTSTRAPFILE: /etc/hyperledger/fabric/genesis.block
+      ORDERER_GENERAL_TLS_ENABLED: "true"
+      ORDERER_GENERAL_TLS_PRIVATEKEY: /etc/hyperledger/fabric/tls/server.key
+      ORDERER_GENERAL_TLS_CERTIFICATE: /etc/hyperledger/fabric/tls/server.crt
+      ORDERER_GENERAL_TLS_ROOTCAS: '[/etc/hyperledger/fabric/tls/ca.crt]'
+      ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE: /etc/hyperledger/fabric/tls/server.crt
+      ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY: /etc/hyperledger/fabric/tls/server.key
+      ORDERER_GENERAL_CLUSTER_ROOTCAS: '[/etc/hyperledger/fabric/tls/ca.crt]'
+      ORDERER_OPERATIONS_LISTENADDRESS: 0.0.0.0:9443
+      ORDERER_METRICS_PROVIDER: prometheus
+    volumes:
+      - ./blockchain/network/channel-artifacts/genesis.block:/etc/hyperledger/fabric/genesis.block:ro
+      - ./blockchain/network/crypto-config/ordererOrganizations/synapsenet.com/orderers/{host}/msp:/etc/hyperledger/fabric/msp:ro
+      - ./blockchain/network/crypto-config/ordererOrganizations/synapsenet.com/orderers/{host}/tls:/etc/hyperledger/fabric/tls:ro
+      - {orderer}_data:/var/hyperledger/production/orderer
+    networks: [synapsenet_test]
+""")
+        volumes.append(f"  {orderer}_data: {{}}")
     for value in values:
         fabric = value["fabric"]
         domain = fabric["domain"]
         peer = fabric["peer"]
         ca = fabric["ca"]
         msp_id = fabric["mspId"]
+        ca_secret = "CA_BOOTSTRAP_" + re.sub(r"[^A-Z0-9]", "_", msp_id.upper())
         suffix = re.sub(r"[^a-z0-9]", "_", domain)
         couch = f"couchdb0.{domain}"
         services.append(f"""  {ca}:
@@ -164,7 +205,7 @@ def render_compose(values: list[dict]) -> str:
     environment:
       FABRIC_CA_SERVER_CA_NAME: ca-{msp_id}
       FABRIC_CA_SERVER_TLS_ENABLED: "true"
-      FABRIC_CA_BOOTSTRAP_PASSWORD: ${{FABRIC_CA_BOOTSTRAP_PASSWORD:?set FABRIC_CA_BOOTSTRAP_PASSWORD}}
+      FABRIC_CA_BOOTSTRAP_PASSWORD: ${{{ca_secret}:?set {ca_secret}}}
     volumes:
       - ./blockchain/network/ca-data/{domain}:/etc/hyperledger/fabric-ca-server
     networks: [synapsenet_test]

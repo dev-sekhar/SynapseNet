@@ -5,6 +5,10 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { CredentialTransaction, getTransactions } from './api';
 
+function responseStatus(reason: unknown) {
+  return (reason as { response?: { status?: number } }).response?.status;
+}
+
 function transactionTime(item: CredentialTransaction) {
   const value = Number(item.timestamp);
   if (Number.isFinite(value)) return value * 1000;
@@ -30,7 +34,8 @@ export function LatestTransactions({
     queryKey: ['latest-credential-transactions'],
     queryFn: () => getTransactions(),
     enabled,
-    refetchInterval: enabled ? 5_000 : false,
+    retry: (failureCount, reason) => responseStatus(reason) !== 401 && failureCount < 1,
+    refetchInterval: (query) => enabled && responseStatus(query.state.error) !== 401 ? 5_000 : false,
     refetchIntervalInBackground: true
   });
 
@@ -60,7 +65,9 @@ export function LatestTransactions({
         Loading latest transactions…
       </Typography>}
       {enabled && query.isError && <Alert severity="warning" sx={{ m: 2 }}>
-        Live transaction updates are temporarily unavailable.
+        {responseStatus(query.error) === 401
+          ? 'Your wallet session expired. Reconnect your wallet to resume transaction updates.'
+          : 'Live transaction updates are temporarily unavailable.'}
       </Alert>}
       {enabled && !query.isLoading && !query.isError && !latest.length &&
         <Alert severity="info" sx={{ m: 2 }}>No committed transactions yet.</Alert>}

@@ -6,6 +6,7 @@ os.environ["SYNAPSENET_ENCRYPTION_KEY"] = "eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4e
 os.environ.setdefault("SYNAPSENET_PENALTY_EXECUTOR_TOKEN", "test-penalty-token")
 
 from fastapi.testclient import TestClient
+import pytest
 
 from app import main
 
@@ -85,6 +86,36 @@ def test_penalty_reconciliation_executes_then_acknowledges(monkeypatch):
 def test_penalty_reconciliation_rejects_missing_executor_token():
     response = TestClient(main.app).post("/api/v2/internal/penalties/reconcile")
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_legacy_actor_uses_provisioned_wallet_msp_binding(monkeypatch):
+    async def fabric(_contract, transaction, _args, *, submit, identity=None):
+        assert transaction == "getUsers"
+        return [{"userId": "legacy-user", "displayName": "Legacy User"}]
+
+    class Result:
+        def scalar_one_or_none(self):
+            return "Org1MSP"
+
+    class Session:
+        async def execute(self, _statement):
+            return Result()
+
+    class SessionContext:
+        async def __aenter__(self):
+            return Session()
+
+        async def __aexit__(self, *_args):
+            return None
+
+    monkeypatch.setattr(main, "fabric_transaction", fabric)
+    monkeypatch.setattr(main, "session_factory", SessionContext)
+
+    identity = await main.actor_fabric_identity({"actorId": "legacy-user", "role": "user"})
+    assert identity == {
+        "mspId": "Org1MSP", "enrollmentId": "legacy-user", "role": "user"
+    }
 
 
 def test_individual_can_follow_and_unfollow_registered_company(monkeypatch):

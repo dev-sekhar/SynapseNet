@@ -18,6 +18,11 @@ One wallet address represents one SynapseNet actor. Role, enterprise assignment,
 identity come from the provisioned mapping, not from browser-supplied claims. An unlinked wallet is
 denied dashboard access and must be provisioned through the governed identity workflow.
 
+Credential submissions use the actor's MSP binding from the Fabric identity record. For actors
+created before MSP-aware chaincode was deployed, the API uses the governed `WalletIdentity`
+provisioning record as the compatibility source. If neither source contains an MSP, submission is
+denied rather than falling back to a browser-provided organization.
+
 ## Logout and account switching
 
 Logout calls both wallet-session and compatibility-session logout endpoints, clears browser wallet
@@ -37,3 +42,5 @@ when `ALLOW_LEGACY_BUSINESS_SESSIONS=false`. Production also sets
 The transaction API resolves its actor from the verified wallet session. It filters the durable
 Fabric projection to that holder or reviewer organization, and the browser polls every five
 seconds. A temporary adapter interruption clears automatically after both event indexes recover.
+An expired wallet session stops polling after the first `401` and prompts the user to reconnect,
+preventing an unauthorized retry loop.

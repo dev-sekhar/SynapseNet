@@ -79,6 +79,10 @@ The wallet request must complete against port 8000 with credentials enabled. The
 session cookie is returned on actor and transaction requests. See
 [AUTHENTICATION.md](AUTHENTICATION.md) for the complete challenge and logout flow.
 
+After rebuilding the frontend, reload the browser entry page so it receives the new hashed asset
+names. The gateway serves the root document with `Cache-Control: no-store` and returns `404` for a
+missing `/assets/*` file instead of redirecting a stylesheet request to HTML.
+
 Finalized SNT penalties are reconciled through an internal, retry-safe endpoint. Set
 `PENALTY_EXECUTOR_TOKEN` to a strong secret and call the endpoint from protected scheduler
 infrastructure:

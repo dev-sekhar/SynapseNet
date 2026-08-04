@@ -300,10 +300,15 @@ app.get('/vendor/axios.min.js', (_request, response) => {
 app.use(express.static(LANDING_ROOT, { index: false }));
 app.use(express.static(WEB3_DIST, { index: false }));
 
+app.use('/assets', (_request, response) => {
+    response.status(404).type('text/plain').send('Frontend asset not found. Reload the page.');
+});
+
 app.get('/', (request, response) => {
     const page = request.session.actor || request.query.wallet === '1'
         ? path.join(WEB3_DIST, 'index.html')
         : path.join(LANDING_ROOT, 'landing.html');
+    response.set('Cache-Control', 'no-store');
     response.sendFile(page);
 });
 

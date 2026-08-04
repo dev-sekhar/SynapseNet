@@ -597,10 +597,21 @@ async def actor_fabric_identity(actor: dict) -> dict[str, str]:
     else:
         enterprises = await fabric_transaction("skill-manager", "getEnterprises", [], submit=False)
         record = next((item for item in enterprises if item.get("enterpriseId") == actor.get("enterpriseId")), None)
-    if not record or not record.get("mspId"):
+    if not record:
+        raise HTTPException(403, "Actor does not have an authoritative Fabric MSP binding")
+    msp_id = record.get("mspId")
+    if not msp_id:
+        async with session_factory() as session:
+            result = await session.execute(
+                select(WalletIdentity.fabric_msp_id)
+                .where(WalletIdentity.actor_id == actor["actorId"])
+                .limit(1)
+            )
+            msp_id = result.scalar_one_or_none()
+    if not msp_id:
         raise HTTPException(403, "Actor does not have an authoritative Fabric MSP binding")
     return {
-        "mspId": record["mspId"],
+        "mspId": msp_id,
         "enrollmentId": actor["actorId"],
         "role": actor["role"],
     }

@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CredentialTransaction, getTransactions } from './api';
 
 function responseStatus(reason: unknown) {
-  return (reason as { response?: { status?: number } }).response?.status;
+  return (reason as { response?: { status?: number } } | null | undefined)?.response?.status;
 }
 
 function transactionTime(item: CredentialTransaction) {

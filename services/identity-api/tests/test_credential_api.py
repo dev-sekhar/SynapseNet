@@ -85,3 +85,36 @@ def test_penalty_reconciliation_executes_then_acknowledges(monkeypatch):
 def test_penalty_reconciliation_rejects_missing_executor_token():
     response = TestClient(main.app).post("/api/v2/internal/penalties/reconcile")
     assert response.status_code == 401
+
+
+def test_individual_can_follow_and_unfollow_registered_company(monkeypatch):
+    actor_id = "network-test-user"
+    enterprise_id = "network-test-company"
+
+    async def actor(_request):
+        return {"actorId": actor_id, "role": "user", "displayName": "Network Tester"}
+
+    async def fabric(_contract, transaction, _args, *, submit, identity=None):
+        assert transaction == "getEnterprises"
+        assert submit is False
+        return [{"enterpriseId": enterprise_id, "name": "Network Test Company"}]
+
+    monkeypatch.setattr(main, "authenticated_business_actor", actor)
+    monkeypatch.setattr(main, "fabric_transaction", fabric)
+    client = TestClient(main.app)
+
+    first = client.post(f"/api/v2/network/companies/{enterprise_id}/follow")
+    duplicate = client.post(f"/api/v2/network/companies/{enterprise_id}/follow")
+    network = client.get("/api/v2/network/companies")
+
+    assert first.status_code == 204
+    assert duplicate.status_code == 204
+    assert network.status_code == 200
+    assert network.json()["individual"]["actorId"] == actor_id
+    assert network.json()["followingCount"] == 1
+    assert network.json()["companies"][0]["followed"] is True
+
+    removed = client.delete(f"/api/v2/network/companies/{enterprise_id}/follow")
+    after = client.get("/api/v2/network/companies")
+    assert removed.status_code == 204
+    assert after.json()["followingCount"] == 0

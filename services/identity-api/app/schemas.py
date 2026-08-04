@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import AnyHttpUrl, BaseModel, Field, StringConstraints
 
 EthereumAddress = Annotated[str, StringConstraints(pattern=r"^0x[a-fA-F0-9]{40}$")]
 Identifier = Annotated[
@@ -147,3 +147,7 @@ class CredentialShareRequest(BaseModel):
     purpose: Annotated[str, StringConstraints(min_length=1, max_length=2000)]
     validFrom: datetime
     expiresAt: datetime
+
+
+class CompanyProfileRequest(BaseModel):
+    logoUrl: AnyHttpUrl | None = None

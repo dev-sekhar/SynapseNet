@@ -13,6 +13,7 @@ SynapseNet/
 │   │   ├── src/
 │   │   │   ├── App.tsx
 │   │   │   ├── BusinessActions.tsx
+│   │   │   ├── CompanyNetwork.tsx     # Individual-to-company network graph
 │   │   │   ├── OrganizationOnboarding.tsx
 │   │   │   ├── SharedCredentials.tsx
 │   │   │   ├── TransactionScan.tsx
@@ -122,6 +123,7 @@ SynapseNet/
 │   ├── ARCHITECTURE.md
 │   ├── AUTHENTICATION.md
 │   ├── CHAINCODE_API.md
+│   ├── COMPANY_NETWORK.md             # Follow-company Phase 1 design and API
 │   ├── DOMAIN_MODEL.md
 │   ├── DISASTER_RECOVERY.md
 │   ├── INCIDENT_RESPONSE.md

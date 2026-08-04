@@ -33,6 +33,20 @@ body::before {
 .pulse { width: 9px; height: 9px; border-radius: 50%; background: #087f68; box-shadow: 0 0 0 0 rgba(8,127,104,.5); animation: live-pulse 1.8s infinite; }
 @keyframes live-pulse { 70% { box-shadow: 0 0 0 7px rgba(8,127,104,0); } 100% { box-shadow: 0 0 0 0 rgba(8,127,104,0); } }
 .qr-icon { width: 58px !important; height: 58px !important; background: #ebe8ff !important; color: #5b4bdb !important; }
+.company-network-card { overflow: hidden; border-top: 4px solid #5b4bdb !important; }
+.network-state { min-height: 260px; display: grid; place-items: center; }
+.network-graph { position: relative; height: clamp(520px,54vw,680px); min-height: 520px; margin-top: 18px; overflow: hidden; border-radius: 18px; background: radial-gradient(circle at center,#f0edff 0 15%,transparent 15.2%),linear-gradient(145deg,#fbfbfe,#f5f8fb); border: 1px solid #e4e8f1; }
+.network-links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.network-links line { stroke: #cfd5df; stroke-width: .35; stroke-dasharray: 1.2 1; vector-effect: non-scaling-stroke; }
+.network-links line.followed { stroke: #5b4bdb; stroke-width: .65; stroke-dasharray: none; }
+.network-person-node,.network-company-node { position: absolute; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px solid #dfe3ec; background: rgba(255,255,255,.96); box-shadow: 0 8px 26px rgba(28,38,58,.10); }
+.network-person-node { left: 50%; top: 50%; width: 150px; min-height: 150px; padding: 14px; border-radius: 50%; transform: translate(-50%,-50%); border: 3px solid #5b4bdb; }
+.network-person-node .MuiAvatar-root { width: 52px; height: 52px; margin-bottom: 7px; background: #5b4bdb; }
+.network-company-node { width: 150px; min-height: 142px; gap: 5px; padding: 12px; border-radius: 16px; transform: translate(-50%,-50%); transition: border-color .18s ease,box-shadow .18s ease; }
+.network-company-node.is-followed { border-color: #8678df; box-shadow: 0 8px 26px rgba(91,75,219,.18); }
+.network-company-node .MuiAvatar-root { width: 48px; height: 48px; background: #172033; font-weight: 800; }
+.network-company-node .MuiTypography-root { max-width: 126px; }
+.network-company-node .MuiButton-root { min-width: 78px; padding: 2px 9px; }
 .flow-card { background: #fff; }
 .flow-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-top: 18px; }
 .flow-step { position: relative; padding: 18px; border-radius: 12px; background: #f7f8fc; border: 1px solid #e4e8f1; }
@@ -55,6 +69,10 @@ body::before {
   .hero { padding: 22px; }
   .flow-row { grid-template-columns: 1fr; }
   .flow-step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -15px; }
+  .network-graph { height: 600px; }
+  .network-company-node { width: 120px; min-height: 126px; padding: 8px; }
+  .network-company-node .MuiAvatar-root { width: 40px; height: 40px; }
+  .network-person-node { width: 126px; min-height: 126px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pulse { animation: none; }

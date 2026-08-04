@@ -44,6 +44,7 @@ import { SharedCredentials } from './SharedCredentials';
 import { TransactionScan } from './TransactionScan';
 import { ModalTitle } from './ModalTitle';
 import { LatestTransactions } from './LatestTransactions';
+import { CompanyNetwork } from './CompanyNetwork';
 
 const emptyWallet = {
   wallet: { walletId: 'Connect to load', tokenIssued: 0, tokenUsed: 0, tokenBurnt: 0, tokenAvailable: 0 },
@@ -380,6 +381,8 @@ export function App() {
             <LatestTransactions enabled={Boolean(connected && businessActor)} onSelect={openTransactionScan} />
           </Grid>
         </Grid>
+
+        <CompanyNetwork enabled={Boolean(connected && businessActor?.role === 'user')} />
 
         <Card className="flow-card" sx={{ mt: 4 }}><CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
           <Typography variant="overline" color="secondary">How SynapseNet works</Typography>

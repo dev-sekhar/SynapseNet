@@ -63,3 +63,21 @@ class OrganizationApplication(Base):
     governance_reference: Mapped[str | None] = mapped_column(String(128))
     join_trust_channel: Mapped[bool] = mapped_column(Boolean, default=False)
     provisioning_manifest: Mapped[str | None] = mapped_column(Text)
+
+
+class CompanyProfile(Base):
+    __tablename__ = "company_profiles"
+
+    enterprise_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    logo_url: Mapped[str | None] = mapped_column(String(2048))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class CompanyFollow(Base):
+    __tablename__ = "company_follows"
+
+    follower_actor_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    enterprise_id: Mapped[str] = mapped_column(String(128), primary_key=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

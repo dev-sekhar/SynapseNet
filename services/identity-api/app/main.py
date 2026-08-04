@@ -16,7 +16,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Res
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.sessions import SessionMiddleware
@@ -24,7 +24,14 @@ from starlette.middleware.sessions import SessionMiddleware
 from .config import settings
 from .database import database_session, session_factory
 from .fabric import audit_events, credential_transactions, fabric_transaction
-from .models import EncryptedMetadata, OrganizationApplication, WalletChallenge, WalletIdentity
+from .models import (
+    CompanyFollow,
+    CompanyProfile,
+    EncryptedMetadata,
+    OrganizationApplication,
+    WalletChallenge,
+    WalletIdentity,
+)
 from .schemas import (
     WalletChallengeRequest,
     WalletChallengeResponse,
@@ -40,6 +47,7 @@ from .schemas import (
     CredentialReviewRequest,
     CredentialShareRequest,
     CredentialSubmissionRequest,
+    CompanyProfileRequest,
     WalletSession,
     WalletVerifyRequest,
 )
@@ -68,7 +76,7 @@ app.add_middleware(
         "http://localhost:3002",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type", "X-Request-ID"],
 )
 
@@ -452,6 +460,108 @@ async def wallet_actor(request: Request):
         return {"actor": await authenticated_business_actor(request)}
     except RuntimeError as error:
         raise HTTPException(503, "Fabric identity lookup is temporarily unavailable") from error
+
+
+async def registered_enterprises() -> list[dict]:
+    try:
+        return await fabric_transaction("skill-manager", "getEnterprises", [], submit=False)
+    except RuntimeError as error:
+        raise HTTPException(503, "Company directory is temporarily unavailable") from error
+
+
+@app.get("/api/v2/network/companies")
+async def company_network(
+    request: Request,
+    session: AsyncSession = Depends(database_session),
+):
+    actor = await authenticated_business_actor(request)
+    if actor["role"] != "user":
+        raise HTTPException(403, "An individual identity is required to view this network")
+    enterprises = await registered_enterprises()
+    profile_rows = (await session.execute(select(CompanyProfile))).scalars().all()
+    profiles = {item.enterprise_id: item for item in profile_rows}
+    followed = set((await session.execute(
+        select(CompanyFollow.enterprise_id).where(
+            CompanyFollow.follower_actor_id == actor["actorId"]
+        )
+    )).scalars().all())
+    count_rows = (await session.execute(
+        select(CompanyFollow.enterprise_id, func.count())
+        .group_by(CompanyFollow.enterprise_id)
+    )).all()
+    follower_counts = dict(count_rows)
+    companies = [{
+        "enterpriseId": item["enterpriseId"],
+        "name": item.get("name") or item["enterpriseId"],
+        "logoUrl": profiles[item["enterpriseId"]].logo_url
+        if item["enterpriseId"] in profiles else None,
+        "followed": item["enterpriseId"] in followed,
+        "followerCount": follower_counts.get(item["enterpriseId"], 0),
+    } for item in enterprises]
+    companies.sort(key=lambda item: (not item["followed"], item["name"].casefold()))
+    return {
+        "individual": {
+            "actorId": actor["actorId"],
+            "displayName": actor.get("displayName") or actor["actorId"],
+        },
+        "companies": companies,
+        "followingCount": len(followed),
+    }
+
+
+@app.post("/api/v2/network/companies/{enterprise_id}/follow", status_code=204)
+async def follow_company(
+    enterprise_id: str,
+    request: Request,
+    session: AsyncSession = Depends(database_session),
+):
+    actor = await authenticated_business_actor(request)
+    if actor["role"] != "user":
+        raise HTTPException(403, "Only individuals can follow companies")
+    enterprises = await registered_enterprises()
+    if not any(item.get("enterpriseId") == enterprise_id for item in enterprises):
+        raise HTTPException(404, "Company is not registered on SynapseNet")
+    existing = await session.get(CompanyFollow, (actor["actorId"], enterprise_id))
+    if existing is None:
+        session.add(CompanyFollow(follower_actor_id=actor["actorId"], enterprise_id=enterprise_id))
+        await session.commit()
+    return Response(status_code=204)
+
+
+@app.delete("/api/v2/network/companies/{enterprise_id}/follow", status_code=204)
+async def unfollow_company(
+    enterprise_id: str,
+    request: Request,
+    session: AsyncSession = Depends(database_session),
+):
+    actor = await authenticated_business_actor(request)
+    if actor["role"] != "user":
+        raise HTTPException(403, "Only individuals can unfollow companies")
+    await session.execute(delete(CompanyFollow).where(
+        CompanyFollow.follower_actor_id == actor["actorId"],
+        CompanyFollow.enterprise_id == enterprise_id,
+    ))
+    await session.commit()
+    return Response(status_code=204)
+
+
+@app.put("/api/v2/network/companies/{enterprise_id}/profile")
+async def update_company_profile(
+    enterprise_id: str,
+    payload: CompanyProfileRequest,
+    request: Request,
+    session: AsyncSession = Depends(database_session),
+):
+    actor = await authenticated_business_actor(request)
+    if actor["role"] != "reviewer" or actor.get("enterpriseId") != enterprise_id:
+        raise HTTPException(403, "Only a company reviewer can update its profile")
+    profile = await session.get(CompanyProfile, enterprise_id)
+    if profile is None:
+        profile = CompanyProfile(enterprise_id=enterprise_id)
+        session.add(profile)
+    profile.logo_url = str(payload.logoUrl) if payload.logoUrl else None
+    await session.commit()
+    return {"enterpriseId": enterprise_id, "logoUrl": profile.logo_url}
 
 
 @app.post("/api/v2/internal/identities", status_code=201)

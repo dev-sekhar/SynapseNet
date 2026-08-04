@@ -101,6 +101,27 @@ export type LegacyActor = {
   enterpriseId?: string;
 };
 
+const companyNetworkSchema = z.object({
+  individual: z.object({ actorId: z.string(), displayName: z.string() }),
+  companies: z.array(z.object({
+    enterpriseId: z.string(), name: z.string(), logoUrl: z.string().nullable(),
+    followed: z.boolean(), followerCount: z.number()
+  })),
+  followingCount: z.number()
+});
+
+export type CompanyNetworkPayload = z.infer<typeof companyNetworkSchema>;
+
+export async function getCompanyNetwork(): Promise<CompanyNetworkPayload> {
+  return companyNetworkSchema.parse((await api.get('/v2/network/companies')).data);
+}
+
+export async function setCompanyFollow(enterpriseId: string, follow: boolean): Promise<void> {
+  const path = `/v2/network/companies/${encodeURIComponent(enterpriseId)}/follow`;
+  if (follow) await api.post(path);
+  else await api.delete(path);
+}
+
 const actorSchema = z.object({
   actorId: z.string(),
   role: z.enum(['user', 'reviewer']),
